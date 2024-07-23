@@ -131,15 +131,6 @@ class PackageHandler:
                 stderr=subprocess.PIPE,
                 text=True)
 
-            output = result.stdout.splitlines()
-
-            for line in output:
-                if line.startswith('Architektur'): # TODO: Currently language-dependent
-                    package_architecture = line.split(':')[1]
-                    self.logger.info(f"Package architecture: {package_architecture}")
-
-            return package_architecture
-
         except subprocess.CalledProcessError as ex:
             self.logger.error(f"Error: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
             self.logger.error("Standard Error:")
@@ -150,12 +141,16 @@ class PackageHandler:
             exit(1)
         except Exception as ex:
             self.logger.error(f"An unexpected error occurred: {ex}")
-
-    def get_package_repository(self, package_name, package_architecture):
-        #print(f"{self.config.config.get('arch-repositories')}")
-        for repository in self.config.config.get('arch-repositories'): # TODO
-            print(f"Repository: {repository.get('name')}")
             exit(1)
+
+        output = result.stdout.splitlines()
+
+        for line in output:
+            if line.startswith('Architektur'): # TODO: Currently language-dependent
+                package_architecture = line.split(':')[1]
+                self.logger.info(f"Package architecture: {package_architecture}")
+
+        return package_architecture
 
     def get_package_repository(self, enabled_repositories, package_name, package_architecture):
         for repository in enabled_repositories:
