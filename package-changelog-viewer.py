@@ -147,7 +147,7 @@ class PackageHandler:
 
         for line in output:
             if line.startswith('Architektur'): # TODO: Currently language-dependent
-                package_architecture = line.split(':')[1]
+                package_architecture = line.split(':')[1].strip()
                 self.logger.info(f"Package architecture: {package_architecture}")
 
         return package_architecture
