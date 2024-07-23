@@ -138,8 +138,10 @@ class PackageHandler:
             self.logger.error(f"Error: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
             self.logger.error("Standard Error:")
             self.logger.error(e.stderr)
+            exit(1)
         except PermissionError:
             self.logger.error("Error: Permission denied. Are you sure you have the necessary permissions to run this command?")
+            exit(1)
         except Exception as ex:
             self.logger.error(f"An unexpected error occurred: {ex}")
 
@@ -147,6 +149,7 @@ class PackageHandler:
         #print(f"{self.config.config.get('arch-repositories')}")
         for repository in self.config.config.get('arch-repositories'): # TODO
             print(f"Repository: {repository.get('name')}")
+            exit(1)
 
     def check_website_availabilty(self, url):
         self.logger.info("Checking website availabilty")
