@@ -56,6 +56,12 @@ class PackageHandler:
     def __init__(self, logger, config):
         self.logger = logger
         self.config = config
+        self.enabled_repositories = []
+
+        # Get the enabled repositories from the config file
+        for repository in self.config.config.get('arch-repositories'):
+            if(repository.get('enabled')):
+                self.enabled_repositories.append(repository.get('name'))
 
     def get_upgradable_packages(self):
         try:
@@ -113,7 +119,7 @@ class PackageHandler:
         #                                 |    |
         # https://archlinux.org/packages/core/any/automake/
         package_architecture = self.get_package_architecture(package[0])
-        package_repository = self.get_package_repository(package[0], package_architecture)
+        package_repository = self.get_package_repository(self.enabled_repositories, package[0], package_architecture)
 
         #self.check_website_availabilty(package)
 
@@ -150,6 +156,13 @@ class PackageHandler:
         for repository in self.config.config.get('arch-repositories'): # TODO
             print(f"Repository: {repository.get('name')}")
             exit(1)
+
+    def get_package_repository(self, enabled_repositories, package_name, package_architecture):
+        for repository in enabled_repositories:
+            possible_url = "https://archlinux.org/packages/" + repository + "/" + package_architecture + "/" + package_name
+            
+            if(self.check_website_availabilty(possible_url)):
+                return repository
 
     def check_website_availabilty(self, url):
         self.logger.info("Checking website availabilty")
