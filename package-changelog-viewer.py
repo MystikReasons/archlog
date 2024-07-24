@@ -153,11 +153,22 @@ class PackageHandler:
         return package_architecture
 
     def get_package_repository(self, enabled_repositories, package_name, package_architecture):
+        reachable_repository = []
         for repository in enabled_repositories:
             possible_url = "https://archlinux.org/packages/" + repository + "/" + package_architecture + "/" + package_name
             
             if(self.check_website_availabilty(possible_url)):
-                return repository
+                reachable_repository.append(repository)
+
+        # Multiple repositories from Arch do contain the same package.
+        # The versions could be the same but could also differ.
+        # This is an error of the user and he should either enable the stable
+        # repositories or the testing in the config file.
+        if len(reachable_repository) > 1:
+            self.logger.error("ERROR: Multiple repositories found. Please use either stable or testing in the config file.")
+            exit(1)
+        else:
+            return reachable_repository
 
     def check_website_availabilty(self, url):
         self.logger.info("Checking website availabilty")
