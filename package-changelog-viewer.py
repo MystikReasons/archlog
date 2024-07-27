@@ -7,12 +7,14 @@ import sys
 import sh
 import requests
 import subprocess
+from typing import Optional, Dict, Any, List
 from datetime import datetime
+from collections import namedtuple
 
 DEFAULT_CONFIG_FILE_NAME = "config.json"
 
 class ConfigHandler:
-    def __init__(self, config_path=DEFAULT_CONFIG_FILE_NAME):
+    def __init__(self, config_path=DEFAULT_CONFIG_FILE_NAME) -> None:
         self.dir_path = os.path.dirname(os.path.abspath(__file__))
         self.config_path = os.path.join(self.dir_path, config_path)
         self.config = self.load_config()
@@ -43,27 +45,36 @@ class ConfigHandler:
         stream.setFormatter(streamformat)
         self.logger.addHandler(stream)
 
-    def load_config(self):
+    def load_config(self) -> Optional[Dict[str, Any]]:
         try:
             with open(self.config_path, "r") as read_config_file:
                 config = json.load(read_config_file)
         except FileNotFoundError:
             self.logger.error(f"ERROR: Config file {self.config_path} not found.")
-            return False
+            return None
         return config
 
 class PackageHandler:
-    def __init__(self, logger, config):
+    def __init__(self, logger, config) -> None:
         self.logger = logger
         self.config = config
         self.enabled_repositories = []
+        self.PackageInfo = namedtuple('PackageInfo', [
+            'package_name',
+            'current_version',
+            'new_version',
+            'current_main',
+            'new_main',
+            'current_suffix',
+            'new_suffix'
+        ])
 
         # Get the enabled repositories from the config file
         for repository in self.config.config.get('arch-repositories'):
             if(repository.get('enabled')):
                 self.enabled_repositories.append(repository.get('name'))
 
-    def get_upgradable_packages(self):
+    def get_upgradable_packages(self) -> List[str]:
         try:
             update_process = subprocess.run(
                 ["sudo", "pacman", "-Sy"],
@@ -79,17 +90,19 @@ class PackageHandler:
             packages_to_update = process.stdout.splitlines()
             packages_to_update = self.split_package_information(packages_to_update)
             return packages_to_update
-
         except subprocess.CalledProcessError as ex:
             self.logger.error(f"Error: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
             self.logger.error("Standard Error:")
             self.logger.error(e.stderr)
+            return []
         except PermissionError:
             self.logger.error("Error: Permission denied. Are you sure you have the necessary permissions to run this command?")
+            return []
         except Exception as ex:
             self.logger.error(f"An unexpected error occurred: {ex}")
+            return []
 
-    def split_package_information(self, packages):
+    def split_package_information(self, packages: List[str]) -> List[namedtuple]:
         packages_restructured = []
 
         # Example: automake 1.16.5-2 -> 1.17-1
@@ -103,27 +116,28 @@ class PackageHandler:
             current_suffix  = parts[1].split('-')[1]
             new_suffix      = parts[3].split('-')[1]
 
-            packages_restructured.append((package_name,
-                                        current_version,
-                                        new_version,
-                                        current_main,
-                                        new_main,
-                                        current_suffix,
-                                        new_suffix))
+            packages_restructured.append(self.PackageInfo(
+                package_name,
+                current_version,
+                new_version,
+                current_main,
+                new_main,
+                current_suffix,
+                new_suffix
+            ))
 
         return packages_restructured
 
-    def get_package_changelog(self, package):
+    def get_package_changelog(self, package: List[namedtuple]) -> List[str]:
         # To determine the exact arch package-adress we need the architecture and repository
         #                         repository  architecture
         #                                 |    |
         # https://archlinux.org/packages/core/any/automake/
-        package_architecture = self.get_package_architecture(package[0])
-        package_repository = self.get_package_repository(self.enabled_repositories, package[0], package_architecture)
-
+        package_architecture = self.get_package_architecture(package.package_name)
+        package_repository = self.get_package_repository(self.enabled_repositories, package.package_name, package_architecture)
         #self.check_website_availabilty(package)
 
-    def get_package_architecture(self, package_name):
+    def get_package_architecture(self, package_name: str) -> str:
         try:
             result = subprocess.run(
                 ['pacman', '-Q', '--info', package_name],
@@ -152,7 +166,7 @@ class PackageHandler:
 
         return package_architecture
 
-    def get_package_repository(self, enabled_repositories, package_name, package_architecture):
+    def get_package_repository(self, enabled_repositories: List[str], package_name: str, package_architecture: str) -> str:
         reachable_repository = []
         for repository in enabled_repositories:
             possible_url = "https://archlinux.org/packages/" + repository + "/" + package_architecture + "/" + package_name
@@ -214,8 +228,8 @@ def main():
     logger.info(f"Upgradable packages ({len(packages_to_update)}):")
     logger.info("--------------------")
     for package in packages_to_update:
-        print(f"{package[0]} {package[1]} -> {package[2]}")
-        package_handler.get_package_changelog(package)
+        logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
+        package_changelog = package_handler.get_package_changelog(package) # TODO Check if it returns False
 
 if __name__ == "__main__":
     main()
