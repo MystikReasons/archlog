@@ -153,6 +153,7 @@ class PackageHandler:
                 return []
             else:
                 return package_changelog
+        self.logger.info("--------------------------------")
         #self.check_website_availabilty(package)
 
     def get_package_architecture(self, package_name: str) -> str:
@@ -232,10 +233,10 @@ class PackageHandler:
         try:
             response = requests.get(url)
             if response.status_code == 200:
-                self.logger.info(f"Website {url} is reachable")
+                self.logger.info(f"Website: {url} is reachable")
                 return True
             else:
-                self.logger.info(f"Website {url} returned status code {response.status_code}.")
+                self.logger.info(f"Website: {url} returned status code {response.status_code}.")
                 return False
         except requests.RequestException as ex:
             self.logger.error(f"ERROR: An error occured during checking availability of website {url}. Error code: {ex}")
@@ -258,8 +259,8 @@ def main():
     logger = config_handler.logger
     package_handler = PackageHandler(logger, config_handler)
 
-    print("Package Changelog Viewer")
-    print("------------------------")
+    logger.info("Package Changelog Viewer")
+    logger.info("------------------------")
     logger.info("Logger is set up")
 
     packages_to_update = package_handler.get_upgradable_packages()
