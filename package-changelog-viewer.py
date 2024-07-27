@@ -135,6 +135,24 @@ class PackageHandler:
         # https://archlinux.org/packages/core/any/automake/
         package_architecture = self.get_package_architecture(package.package_name)
         package_repository = self.get_package_repository(self.enabled_repositories, package.package_name, package_architecture)
+        # TODO: package_repository should not be an array anymore in the future
+        arch_package_url = "https://archlinux.org/packages/" + package_repository[0] + "/" + package_architecture + "/" + package.package_name
+        
+        # Check if there was only a minor version release
+        # Example: 1.16.5-2 -> 1.16.5-3
+        if (package.current_main == package.new_main) and package.current_suffix != package.new_suffix:
+            package_source_files_url = self.get_package_source_files_url(arch_package_url) # TODO: Check if return value is False
+
+            if not package_source_files_url:
+                return []
+
+            package_changelog = self.compare_tags(package_source_files_url, package.current_version, package.new_version)
+
+            if not package_changelog:
+                self.logger.info(f"No package changelog for package: {package.package_name} found.")
+                return []
+            else:
+                return package_changelog
         #self.check_website_availabilty(package)
 
     def get_package_architecture(self, package_name: str) -> str:
@@ -184,8 +202,33 @@ class PackageHandler:
         else:
             return reachable_repository
 
-    def check_website_availabilty(self, url):
-        self.logger.info("Checking website availabilty")
+
+    def get_package_source_files_url(self, url: str) -> Optional[str]:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        source_file_link = soup.find('a', string='Source Files')
+
+        if source_file_link:
+            source_file_url = source_file_link.get('href')
+            self.logger.info(f"Arch 'Source Files' URL: {source_file_url}")
+            return source_file_url
+        else:
+            self.logger.error(f"ERROR: Couldn't find node 'Source Files' on {url}")
+            return None
+
+    def compare_tags(self, source: str, current_tag: str, new_tag: str) -> List[str]:
+        compare_tags_url = source + '/-/compare/' + current_tag + '...' + new_tag
+        self.logger.info(f"Compare tags URL: {compare_tags_url}")
+        response = requests.get(compare_tags_url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        commits = soup.find_all('a', class_='commit-row-message')
+        commit_messages = [commit.get_text(strip=True) for commit in commits]
+
+        for message in commit_messages:
+            print(message)
+
+    def check_website_availabilty(self, url: str) -> bool:
         try:
             response = requests.get(url)
             if response.status_code == 200:
