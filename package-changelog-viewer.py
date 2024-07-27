@@ -211,7 +211,7 @@ def main():
         logger.info("No packages to upgrade")
         exit()
 
-    logger.info("Upgradable packages:")
+    logger.info(f"Upgradable packages ({len(packages_to_update)}):")
     logger.info("--------------------")
     for package in packages_to_update:
         print(f"{package[0]} {package[1]} -> {package[2]}")
