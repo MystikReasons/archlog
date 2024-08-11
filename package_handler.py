@@ -1,58 +1,9 @@
-#! /usr/bin/python3
-from bs4 import BeautifulSoup
-import json
-import logging
-import os
-import sys
-import sh
-import requests
-import subprocess
-from typing import Optional, Dict, Any, List
-from datetime import datetime
+from typing import Optional, List, Tuple
 from collections import namedtuple
-
-DEFAULT_CONFIG_FILE_NAME = "config.json"
-
-class ConfigHandler:
-    def __init__(self, config_path=DEFAULT_CONFIG_FILE_NAME) -> None:
-        self.dir_path = os.path.dirname(os.path.abspath(__file__))
-        self.config_path = os.path.join(self.dir_path, config_path)
-        self.config = self.load_config()
-
-        self.datetime_now = datetime.now()
-        self.dt_string_logging = self.datetime_now.strftime("%d-%m-%Y_%H-%M-%S")
-        self.dt_string = self.datetime_now.strftime("%d.%m.%Y")
-
-        self.logs_path = os.path.join(self.dir_path, "logs", "")
-
-        if not os.path.exists(self.logs_path):
-            os.makedirs(self.logs_path)
-
-        self.setup_logging()
-
-    def setup_logging(self):
-        logging.basicConfig(
-            filename=self.logs_path + self.dt_string_logging,
-            format="%(asctime)s %(message)s",
-            filemode="w")
-        self.logger = logging.getLogger()
-        self.logger.setLevel(logging.INFO)
-
-        # Output the logging also to the console
-        stream = logging.StreamHandler()
-        stream.setLevel(logging.INFO)
-        streamformat = logging.Formatter("%(message)s")
-        stream.setFormatter(streamformat)
-        self.logger.addHandler(stream)
-
-    def load_config(self) -> Optional[Dict[str, Any]]:
-        try:
-            with open(self.config_path, "r") as read_config_file:
-                config = json.load(read_config_file)
-        except FileNotFoundError:
-            self.logger.error(f"ERROR: Config file {self.config_path} not found.")
-            return None
-        return config
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+import subprocess
+import requests
 
 class PackageHandler:
     def __init__(self, logger, config) -> None:
@@ -128,7 +79,7 @@ class PackageHandler:
 
         return packages_restructured
 
-    def get_package_changelog(self, package: List[namedtuple]) -> List[str]:
+    def get_package_changelog(self, package: List[namedtuple]) -> List[Tuple[str, str]]:
         # To determine the exact arch package-adress we need the architecture and repository
         #                         repository  architecture
         #                                 |    |
@@ -138,14 +89,35 @@ class PackageHandler:
         # TODO: package_repository should not be an array anymore in the future
         arch_package_url = "https://archlinux.org/packages/" + package_repository[0] + "/" + package_architecture + "/" + package.package_name
         
-        # Check if there was only a minor version release
-        # Example: 1.16.5-2 -> 1.16.5-3
-        if (package.current_main == package.new_main) and package.current_suffix != package.new_suffix:
-            package_source_files_url = self.get_package_source_files_url(arch_package_url) # TODO: Check if return value is False
-
-            if not package_source_files_url:
+        package_source_files_url = self.get_package_source_files_url(arch_package_url) # TODO: Check if return value is None
+        
+        if not package_source_files_url:
                 return []
 
+        ## TODO: Check if the source files (PKGBUILD, etc.) did receive some updates beside pkver, pkgrel, etc...
+
+        # Check if there was a major release
+        # Example: 1.16.5-2 -> 1.17.5-1
+        if package.current_main != package.new_main:
+            package_upstream_url = self.get_package_upstream_url(arch_package_url) # TODO: Check if return value is None
+
+            # Check if upstream url contains kde.org
+            if('kde.org' in package_upstream_url):
+                # KDE tags look like this: v6.1.3 while Arch uses it like this 1-6.1.3-1
+                current_version_altered = 'v' + package.current_main.replace('1:', '')
+                new_version_altered = 'v' + package.new_main.replace('1:', '')
+
+                package_changelog = self.compare_tags('https://invent.kde.org/plasma/' + package.package_name, 
+                    current_version_altered, 
+                    new_version_altered
+                )
+
+                if package_changelog:
+                    return package_changelog 
+        
+        # Check if there was a minor release
+        # Example: 1.16.5-2 -> 1.16.5-3
+        if (package.current_main == package.new_main) and (package.current_suffix != package.new_suffix) and package_source_files_url:
             package_changelog = self.compare_tags(package_source_files_url, package.current_version, package.new_version)
 
             if not package_changelog:
@@ -153,7 +125,7 @@ class PackageHandler:
                 return []
             else:
                 return package_changelog
-        self.logger.info("--------------------------------")
+        
         #self.check_website_availabilty(package)
 
     def get_package_architecture(self, package_name: str) -> str:
@@ -203,6 +175,19 @@ class PackageHandler:
         else:
             return reachable_repository
 
+    def get_package_upstream_url(self, url: str) -> Optional[str]:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        upstream_link = soup.find('th', string='Upstream URL:')
+        self.logger.info(f"Upstream URL: {upstream_link}")
+
+        if upstream_link:
+            upstream_url = upstream_link.find_next_sibling('td').find('a').get('href')
+            self.logger.info(f"Upstream URL: {upstream_url}")
+            return upstream_url
+        else:
+            self.logger.error(f"ERROR: Couldn't find node 'Upstream URL:' on {url}")
+            return None
 
     def get_package_source_files_url(self, url: str) -> Optional[str]:
         response = requests.get(url)
@@ -217,7 +202,7 @@ class PackageHandler:
             self.logger.error(f"ERROR: Couldn't find node 'Source Files' on {url}")
             return None
 
-    def compare_tags(self, source: str, current_tag: str, new_tag: str) -> List[str]:
+    def compare_tags(self, source: str, current_tag: str, new_tag: str) -> List[Tuple[str, str]]:
         compare_tags_url = source + '/-/compare/' + current_tag + '...' + new_tag
         self.logger.info(f"Compare tags URL: {compare_tags_url}")
         response = requests.get(compare_tags_url)
@@ -225,9 +210,15 @@ class PackageHandler:
 
         commits = soup.find_all('a', class_='commit-row-message')
         commit_messages = [commit.get_text(strip=True) for commit in commits]
+        incomplete_commit_urls = [commit.get('href') for commit in commits]
+        full_commit_urls = [urljoin(source, commit_url) for commit_url in incomplete_commit_urls]
 
-        for message in commit_messages:
-            print(message)
+        combined_info = zip(commit_messages, full_commit_urls)
+
+        if combined_info:
+            return combined_info
+        else:
+            return []
 
     def check_website_availabilty(self, url: str) -> bool:
         try:
@@ -253,27 +244,3 @@ class PackageHandler:
 
     def upstream(self):
         self.logger.info("Checking upstream changelog")
-
-def main():
-    config_handler = ConfigHandler()
-    logger = config_handler.logger
-    package_handler = PackageHandler(logger, config_handler)
-
-    logger.info("Package Changelog Viewer")
-    logger.info("------------------------")
-    logger.info("Logger is set up")
-
-    packages_to_update = package_handler.get_upgradable_packages()
-
-    if not packages_to_update:
-        logger.info("No packages to upgrade")
-        exit()
-
-    logger.info(f"Upgradable packages ({len(packages_to_update)}):")
-    logger.info("--------------------")
-    for package in packages_to_update:
-        logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
-        package_changelog = package_handler.get_package_changelog(package) # TODO Check if it returns False
-
-if __name__ == "__main__":
-    main()
