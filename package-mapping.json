@@ -1,0 +1,20 @@
+{
+    "pacman-mirrorlist":
+    {
+        "platform": "gitlab",
+        "changelog-url": "https://gitlab.archlinux.org/archlinux/packaging/packages/pacman-mirrorlist",
+        "diff-type": "tags"
+    },
+    "qt5-base":
+    {
+        "platform": "gitlab",
+        "changelog-url": "https://invent.kde.org/qt/qt/qtbase/-/commits/kde%2F5.15",
+        "diff-type": "commits"
+    },
+    "automake":
+    {
+        "platform": "gitlab",
+        "changelog-url": "https://gitlab.com/autotools-mirror/automake/-/blob/master/NEWS?ref_type=heads",
+        "diff-type": "-"
+    }
+}
