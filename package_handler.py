@@ -118,7 +118,13 @@ class PackageHandler:
         # Check if there was a minor release
         # Example: 1.16.5-2 -> 1.16.5-3
         if (package.current_main == package.new_main) and (package.current_suffix != package.new_suffix) and package_source_files_url:
-            package_changelog = self.compare_tags(package_source_files_url, package.current_version, package.new_version)
+            # Some Arch packages do have versions that look like this: 1:1.16.5-2
+            # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
+            # In order to make a tag compare on Gitlab, transform '1:' to '1-'
+            current_version_altered = package.current_version.replace('1:', '1-')
+            new_version_altered = package.new_version.replace('1:', '1-')
+
+            package_changelog = self.compare_tags(package_source_files_url, current_version_altered, new_version_altered)
 
             if not package_changelog:
                 self.logger.info(f"No package changelog for package: {package.package_name} found.")
