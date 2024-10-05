@@ -1,12 +1,13 @@
 from typing import Optional, List, Tuple
 from collections import namedtuple
-from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+from web_scraper import WebScraper
 import subprocess
 import requests
 
 class PackageHandler:
     def __init__(self, logger, config) -> None:
+        self.web_scraper = WebScraper()
         self.logger = logger
         self.config = config
         self.enabled_repositories = []
@@ -183,11 +184,11 @@ class PackageHandler:
             return reachable_repository
 
     def get_package_upstream_url(self, url: str) -> Optional[str]:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        upstream_link = soup.find('th', string='Upstream URL:')
-        self.logger.info(f"Upstream URL: {upstream_link}")
+        response = self.web_scraper.fetch_page_content(url)
+        if response is None:
+            return None
 
+        upstream_link = self.web_scraper.find_element(response, 'th', string='Upstream URL:')
         if upstream_link:
             upstream_url = upstream_link.find_next_sibling('td').find('a').get('href')
             self.logger.info(f"Upstream URL: {upstream_url}")
@@ -197,23 +198,35 @@ class PackageHandler:
             return None
 
     def get_package_source_files_url(self, url: str) -> Optional[str]:
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        source_file_link = soup.find('a', string='Source Files')
+        try:
+            response = self.web_scraper.fetch_page_content(url)
+            if response is None:
+                return None
 
-        if source_file_link:
-            source_file_url = source_file_link.get('href')
-            self.logger.info(f"Arch 'Source Files' URL: {source_file_url}")
-            return source_file_url
-        else:
-            self.logger.error(f"ERROR: Couldn't find node 'Source Files' on {url}")
+            source_file_link = self.web_scraper.find_element(response, 'a', string='Source Files')
+
+            if source_file_link:
+                source_file_url = source_file_link.get('href')
+                self.logger.info(f"Arch 'Source Files' URL: {source_file_url}")
+                return source_file_url
+            else:
+                self.logger.error(f"ERROR: Couldn't find node 'Source Files' on {url}")
+                return None
+        except requests.RequestException as ex:
+            self.logger.error(f"ERROR: An error occurred during the HTTP request to {url}. Error code: {ex}")
             return None
-
-    def compare_tags(self, source: str, current_tag: str, new_tag: str) -> List[Tuple[str, str]]:
+        except Exception as ex:
+            self.logger.error(f"ERROR: An unexpected error occurred while parsing the HTML: {ex}")
+            return None
         compare_tags_url = source + '/-/compare/' + current_tag + '...' + new_tag
         self.logger.debug(f"Compare tags URL: {compare_tags_url}")
 
-        commits = soup.find_all('a', class_='commit-row-message')
+        response = self.web_scraper.fetch_page_content(compare_tags_url)
+        commits = self.web_scraper.find_all_elements(response, 'a', class_='commit-row-message')
+        if not commits:
+            self.logger.debug(f"No commit messages found in the response from {compare_tags_url}")
+            return None
+
         commit_messages = [commit.get_text(strip=True) for commit in commits]
         incomplete_commit_urls = [commit.get('href') for commit in commits]
         full_commit_urls = [urljoin(source, commit_url) for commit_url in incomplete_commit_urls]
