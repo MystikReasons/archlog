@@ -327,8 +327,8 @@ class PackageHandler:
                 return None
             else:
                 return package_changelog
-        
-        #self.check_website_availabilty(package)
+
+        return package_changelog
 
     def get_package_architecture(self, package_name: str) -> str:
         """
