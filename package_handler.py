@@ -42,16 +42,16 @@ class PackageHandler:
             packages_to_update = self.split_package_information(packages_to_update)
             return packages_to_update
         except subprocess.CalledProcessError as ex:
-            self.logger.error(f"Error: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
+            self.logger.error(f"ERROR: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
             self.logger.error("Standard Error:")
             self.logger.error(e.stderr)
-            return []
+            return None
         except PermissionError:
-            self.logger.error("Error: Permission denied. Are you sure you have the necessary permissions to run this command?")
-            return []
+            self.logger.error("ERROR: Permission denied. Are you sure you have the necessary permissions to run this command?")
+            return None
         except Exception as ex:
-            self.logger.error(f"An unexpected error occurred: {ex}")
-            return []
+            self.logger.error(f"ERROR: An unexpected error occurred: {ex}")
+            return None
 
     def split_package_information(self, packages: List[str]) -> List[namedtuple]:
         packages_restructured = []
@@ -85,14 +85,15 @@ class PackageHandler:
         #                                 |    |
         # https://archlinux.org/packages/core/any/automake/
         package_architecture = self.get_package_architecture(package.package_name)
+
+        if not package_architecture:
+            return None
+
         package_repository = self.get_package_repository(self.enabled_repositories, package.package_name, package_architecture)
         # TODO: package_repository should not be an array anymore in the future
         arch_package_url = "https://archlinux.org/packages/" + package_repository[0] + "/" + package_architecture + "/" + package.package_name
-        
-        package_source_files_url = self.get_package_source_files_url(arch_package_url) # TODO: Check if return value is None
-        
-        if not package_source_files_url:
-                return []
+        if (not package_source_files_url):
+            return None
 
         ## TODO: Check if the source files (PKGBUILD, etc.) did receive some updates beside pkver, pkgrel, etc...
 
@@ -210,9 +211,7 @@ class PackageHandler:
 
     def compare_tags(self, source: str, current_tag: str, new_tag: str) -> List[Tuple[str, str]]:
         compare_tags_url = source + '/-/compare/' + current_tag + '...' + new_tag
-        self.logger.info(f"Compare tags URL: {compare_tags_url}")
-        response = requests.get(compare_tags_url)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        self.logger.debug(f"Compare tags URL: {compare_tags_url}")
 
         commits = soup.find_all('a', class_='commit-row-message')
         commit_messages = [commit.get_text(strip=True) for commit in commits]
@@ -224,7 +223,7 @@ class PackageHandler:
         if combined_info:
             return combined_info
         else:
-            return []
+            return None
 
     def check_website_availabilty(self, url: str) -> bool:
         try:
