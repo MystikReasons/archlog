@@ -30,7 +30,7 @@ def main():
 
     for package in packages_to_update:
         logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
-        package_changelog = package_handler.get_package_changelog(package) # TODO Check if it returns False
+        package_changelog = package_handler.get_package_changelog(package)
 
         if package_changelog:
             logger.info("Changelog:")
