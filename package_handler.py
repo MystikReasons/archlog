@@ -263,22 +263,56 @@ class PackageHandler:
         # Check if there was a major release
         # Example: 1.16.5-2 -> 1.17.5-1
         if package.current_main != package.new_main:
-            package_upstream_url = self.get_package_upstream_url(arch_package_url) # TODO: Check if return value is None
+            match package_upstream_url:
+                case url if 'github.com' in url:
+                    #package_changelog = self.get_github_changelog(package_upstream_url, package.current_main, package.new_main)
+                    package_changelog = self.get_changelog_compare_package_tags(package_upstream_url, 
+                                                                                package.current_version_altered, 
+                                                                                package.new_version_altered)
 
-            # Check if upstream url contains kde.org
-            if('kde.org' in package_upstream_url):
-                # KDE tags look like this: v6.1.3 while Arch uses it like this 1-6.1.3-1
-                current_version_altered = 'v' + package.current_main.replace('1:', '')
-                new_version_altered = 'v' + package.new_main.replace('1:', '')
+                case url if 'gitlab.com' in url:
+                    package_changelog = self.get_gitlab_changelog(package_upstream_url, package.current_main, package.new_main)
 
-                package_changelog = self.compare_tags('https://invent.kde.org/plasma/' + package.package_name, 
-                    current_version_altered, 
-                    new_version_altered
-                )
+                case url if 'kde.org' in url:
+                    # KDE tags look like this: v6.1.3 while Arch uses it like this 1:6.1.3-1
+                    current_version_altered = 'v' + package.current_main.replace('1:', '')
+                    new_version_altered = 'v' + package.new_main.replace('1:', '')
 
-                if package_changelog:
-                    return package_changelog 
-        
+                    # Differentiate between 'Plasma' and 'Frameworks' package
+                    base_url = 'https://invent.kde.org/plasma/' if 'plasma' in url else 'https://invent.kde.org/frameworks/'
+
+                    package_changelog = self.get_changelog(base_url + package.package_name,
+                                                           current_version_altered,
+                                                           new_version_altered)
+
+                case _:
+                    current_tag_url = package_source_files_url + '/-/blob/' + package.current_version_altered + '/.SRCINFO'
+                    new_tag_url = package_source_files_url + '/-/blob/' + package.new_version_altered + '/.SRCINFO'
+                    self.logger.debug(f"Current tag URL: {current_tag_url}")
+                    self.logger.debug(f"New tag URL: {new_tag_url}")
+                    # https://gitlab.archlinux.org/archlinux/packaging/packages/pipewire/-/blob/1-1.2.3-1/.SRCINFO
+
+                    first_source_url = self.get_arch_package_source_url(current_tag_url)
+                    second_source_url = self.get_arch_package_source_url(new_tag_url)
+                    first_source_tag = self.get_arch_package_source_tag(current_tag_url)
+                    second_source_tag = self.get_arch_package_source_tag(new_tag_url)
+
+                    if (first_source_url != second_source_url):
+                        return None
+
+                    if (not first_source_url or not second_source_url and
+                        not first_source_tag or not second_source_tag):
+                        return None
+                    else:
+                        package_changelog = self.get_changelog_compare_package_tags(first_source_url,
+                                                                                    first_source_tag,
+                                                                                    second_source_tag)
+
+            if not package_changelog:
+                return None
+            else:
+                return package_changelog
+
         # Check if there was a minor release
         # Example: 1.16.5-2 -> 1.16.5-3
         if (package.current_main == package.new_main) and (package.current_suffix != package.new_suffix) and package_source_files_url:
