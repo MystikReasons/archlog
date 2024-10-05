@@ -2,6 +2,7 @@ from typing import Optional, List, Tuple
 from collections import namedtuple
 from urllib.parse import urljoin
 from web_scraper import WebScraper
+import re
 import subprocess
 import requests
 
@@ -204,9 +205,9 @@ class PackageHandler:
                     first_compare_suffix != second_compare_suffix):
                     self.logger.debug(f"{release} is a minor intermediate release")
 
-                    package_changelog = self.get_changelog(package_source_files_url,
-                                                          first_compare_version,
-                                                          release)
+                    package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
+                                                                                first_compare_version,
+                                                                                release)
 
                 # Check if there was a major release in between
                 elif first_compare_main != second_compare_main:
@@ -265,7 +266,6 @@ class PackageHandler:
         if package.current_main != package.new_main:
             match package_upstream_url:
                 case url if 'github.com' in url:
-                    #package_changelog = self.get_github_changelog(package_upstream_url, package.current_main, package.new_main)
                     package_changelog = self.get_changelog_compare_package_tags(package_upstream_url, 
                                                                                 package.current_version_altered, 
                                                                                 package.new_version_altered)
@@ -281,9 +281,9 @@ class PackageHandler:
                     # Differentiate between 'Plasma' and 'Frameworks' package
                     base_url = 'https://invent.kde.org/plasma/' if 'plasma' in url else 'https://invent.kde.org/frameworks/'
 
-                    package_changelog = self.get_changelog(base_url + package.package_name,
-                                                           current_version_altered,
-                                                           new_version_altered)
+                    package_changelog = self.get_changelog_compare_package_tags(base_url + package.package_name,
+                                                                                current_version_altered,
+                                                                                new_version_altered)
 
                 case _:
                     current_tag_url = package_source_files_url + '/-/blob/' + package.current_version_altered + '/.SRCINFO'
@@ -319,9 +319,9 @@ class PackageHandler:
             # Some Arch packages do have versions that look like this: 1:1.16.5-2
             # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
             # In order to make a tag compare on Gitlab, use the altered versions
-            package_changelog = self.get_changelog(package_source_files_url,
-                                                   package.current_version_altered,
-                                                   package.new_version_altered)
+            package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
+                                                                        package.current_version_altered,
+                                                                        package.new_version_altered)
 
             if not package_changelog:
                 return None
@@ -380,6 +380,104 @@ class PackageHandler:
             return None
 
         return package_architecture
+
+    def get_arch_package_source_url(self, url):
+        """
+        Extracts the source URL from an Arch source webpage (gitlab.archlinux.org) containing package information.
+
+        This function sends an HTTP GET request to the specified URL, parses the HTML content
+        to find a `<span>` tag containing the source URL of a package. It then extracts and
+        returns the source URL. The function specifically looks for the string 'source =' in
+        the `<span>` tag text and extracts the URL part before the final segment.
+
+        :param str url: The URL of the webpage to retrieve and parse.
+
+        :return: The extracted source URL if found, otherwise None.
+        :rtype: str
+
+        :raises requests.RequestException: If an error occurs during the HTTP request.
+            This includes network errors, invalid URLs, or issues with the request itself.
+        :raises Exception: For any other unexpected errors that occur during HTML parsing or URL extraction.
+        """
+        try:
+            response = self.web_scraper.fetch_page_content(url)
+            source_urls = self.web_scraper.find_all_elements(response, None, string=lambda text: "source =" in text)
+
+            if not source_urls:
+                self.logger.debug(f"Couldn't find a source node in {url}")
+                return None
+
+            for source_url in source_urls:
+                source_url = source_url.get_text(strip=True)
+                
+                # 'source_url' could extract something like this:
+                # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
+                # We only need this segment: https://gitlab.freedesktop.org/pipewire/
+                match = re.search(r"https://.*(?=\.git)", source_url)
+
+                if match:
+                    source_url = match.group(0)
+                    self.logger.debug(f"Source URL: {source_url}")
+                    return source_url
+                else:
+                    self.logger.error(f"ERROR: Couldn't find 'source =' in {url}")
+                    return None
+
+        except requests.RequestException as ex:
+            self.logger.error(f"ERROR: HTTP Request failed for URL {url}: {ex}")
+            return None
+        except Exception as ex:
+            self.logger.error(f"ERROR: Unexpected error while processing URL {url}: {ex}")
+            return None
+
+    def get_arch_package_source_tag(self, url):
+        """
+        Extracts the source tag from an Arch source webpage (gitlab.archlinux.org) containing package information.
+
+        This function sends an HTTP GET request to the specified URL, parses the HTML content
+        to find a `<span>` tag containing the source URL of a package. It then extracts and
+        returns the source URL. The function specifically looks for the string 'source =' in
+        the `<span>` tag text and extracts the URL part before the final segment.
+
+        :param str url: The URL of the webpage to retrieve and parse.
+
+        :return: The extracted source URL if found, otherwise None.
+        :rtype: str
+
+        :raises requests.RequestException: If an error occurs during the HTTP request.
+            This includes network errors, invalid URLs, or issues with the request itself.
+        :raises Exception: For any other unexpected errors that occur during HTML parsing or URL extraction.
+        """
+        try:
+            response = self.web_scraper.fetch_page_content(url)
+            source_urls = self.web_scraper.find_all_elements(response, None, string=lambda text: "source =" in text)
+
+            if not source_urls:
+                self.logger.debug(f"Couldn't find a source node in {url}")
+                return None
+
+            for source_url in source_urls:
+                source_url = source_url.get_text(strip=True)
+            
+                # 'source_url' could extract something like this:
+                # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
+                # We only need this segment: https://gitlab.freedesktop.org/pipewire/
+                match = re.search(r"#tag=([^\s]+)", source_url)
+
+                if match:
+                    source_tag = match.group(1)
+                    self.logger.info(f"Source tag: {source_tag}")
+                    return source_tag
+                else:
+                    self.logger.error(f"ERROR: Couldn't find information 'tag=' in node 'source =' in {url}")
+                    return None
+
+        except requests.RequestException as ex:
+            self.logger.error(f"ERROR: HTTP Request failed for URL {url}: {ex}")
+            return None
+        except Exception as ex:
+            self.logger.error(f"ERROR: Unexpected error while processing URL {url}: {ex}")
+            return None
 
     def get_package_repository(self, enabled_repositories: List[str], package_name: str, package_architecture: str) -> str:
         """
@@ -467,6 +565,82 @@ class PackageHandler:
         except Exception as ex:
             self.logger.error(f"ERROR: An unexpected error occurred while parsing the HTML: {ex}")
             return None
+
+    def get_package_tags(self, url: str) -> List[Tuple[str, str]]:
+        """
+        Retrieves release tags and their associated timestamps from a source code hosting website.
+
+        This function sends an HTTP GET request to the specified URL, parses the HTML content to find
+        SVG elements representing tags and their corresponding timestamps. It then returns a list of tuples
+        where each tuple contains a release tag and its associated timestamp. The function also transforms
+        tags with a version prefix of '1:' to '1-' for compatibility with repository host formats.
+
+        :param str url: The URL of the webpage to retrieve and parse.
+
+        :return: A list of tuples where each tuple contains a release tag and its associated timestamp.
+                 If an error occurs during the request or parsing, or if no relevant data is found, an empty list is returned.
+        :rtype: List[Tuple[str, str]]
+
+        :raises requests.RequestException: If an error occurs during the HTTP request.
+            This includes network errors, invalid URLs, or issues with the request itself.
+        :raises Exception: For any other unexpected errors that occur during HTML parsing.
+        """
+        try:
+            response = self.web_scraper.fetch_page_content(url)
+
+            if not response:
+                return None
+
+            svg = self.web_scraper.find_all_elements(response, 'svg', attrs={'data-testid': 'tag-icon'})
+
+            if not svg:
+                self.logger.debug(f"No package tag found in the response from {url}")
+                return None
+
+            release_tags = [svg_tag.find_next('a').text for svg_tag in svg]
+            time_tag = self.web_scraper.find_all_elements(response, 'time')
+            time_tags = [tag['datetime'] for tag in time_tag]
+
+            combined_info = list(zip(release_tags, time_tags))
+
+            for index, (release, time) in enumerate(combined_info):
+                # Some Arch packages do have versions that look like this: 1:1.16.5-2
+                # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
+                # In order to make a tag compare on Gitlab, transform '1:' to '1-'
+                transformed_release = release.replace('1:', '1-')
+                self.logger.info(f"Release tag: {transformed_release} Time tag: {time}")
+                combined_info[index] = (transformed_release, time)
+
+            return combined_info
+
+        except requests.RequestException as ex:
+            self.logger.error(f"ERROR: An error occurred during the HTTP request to {url}. Error code: {ex}")
+            return None
+        except Exception as ex:
+            self.logger.error(f"ERROR: An unexpected error occurred while parsing the HTML or extracting tag information: {ex}")
+            return None
+
+
+
+    def get_changelog_compare_package_tags(self, source: str, current_tag: str, new_tag: str) -> List[Tuple[str, str, str]]:
+        """
+        Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
+
+        This function constructs a URL to compare the two specified tags in a Git repository, retrieves
+        the comparison page, and parses it to extract commit messages and their corresponding URLs.
+        The function returns a list of tuples where each tuple contains a commit message and its full URL.
+
+        :param str source: The base URL of the Git repository.
+        :param str current_tag: The tag to compare from.
+        :param str new_tag: The tag to compare to.
+
+        :return: A list of tuples where each tuple contains a commit message, its full URL and the version tag.
+        :rtype: List[Tuple[str, str, str]]
+
+        :raises requests.RequestException: If an error occurs during the HTTP request.
+            This includes network errors, invalid URLs, or issues with the request itself.
+        :raises Exception: For any other unexpected errors that occur during HTML parsing.
+        """
         compare_tags_url = source + '/-/compare/' + current_tag + '...' + new_tag
         self.logger.debug(f"Compare tags URL: {compare_tags_url}")
 
@@ -477,10 +651,10 @@ class PackageHandler:
             return None
 
         commit_messages = [commit.get_text(strip=True) for commit in commits]
-        incomplete_commit_urls = [commit.get('href') for commit in commits]
-        full_commit_urls = [urljoin(source, commit_url) for commit_url in incomplete_commit_urls]
+        commit_urls = [urljoin(source, commit.get('href')) for commit in commits]
+        version_tags = [new_tag] * len(commit_messages)
 
-        combined_info = zip(commit_messages, full_commit_urls)
+        combined_info = list(zip(commit_messages, commit_urls, version_tags))
 
         if combined_info:
             return combined_info
@@ -545,10 +719,15 @@ class PackageHandler:
             return intermediate_tags
         else:
             return None
+            
+    def get_gitlab_changelog(self, url: str, current_tag: str, new_tag: str) -> List[Tuple[str, str]]:
         self.logger.info("Checking Gitlab changelog")
 
-    def github(self):
-        self.logger.info("Checking Github changelog")
+        # Check if Arch versions are the same as the tags on Gitlab
+        package_tags = self.get_package_tags(url + '/-/tags')
+        if package_tags:
+            self.logger.info("TODO")
+        else:
+            self.logger.info(f"No package tags on: {url + '/-/tags'} found")
 
-    def upstream(self):
-        self.logger.info("Checking upstream changelog")
+        return None
