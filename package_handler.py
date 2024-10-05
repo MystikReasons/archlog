@@ -184,8 +184,7 @@ class PackageHandler:
                                                    package.new_version_altered)
 
             if not package_changelog:
-                self.logger.info(f"No package changelog for package: {package.package_name} found.")
-                return []
+                return None
             else:
                 return package_changelog
         
@@ -217,15 +216,15 @@ class PackageHandler:
                 text=True)
 
         except subprocess.CalledProcessError as ex:
-            self.logger.error(f"Error: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
+            self.logger.error(f"ERROR: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
             self.logger.error("Standard Error:")
             self.logger.error(e.stderr)
             exit(1)
         except PermissionError:
-            self.logger.error("Error: Permission denied. Are you sure you have the necessary permissions to run this command?")
+            self.logger.error("ERROR: Permission denied. Are you sure you have the necessary permissions to run this command?")
             exit(1)
         except Exception as ex:
-            self.logger.error(f"An unexpected error occurred: {ex}")
+            self.logger.error(f"ERROR: An unexpected error occurred: {ex}")
             exit(1)
 
         output = result.stdout.splitlines()
@@ -233,7 +232,12 @@ class PackageHandler:
         for line in output:
             if line.startswith('Architektur'): # TODO: Currently language-dependent
                 package_architecture = line.split(':')[1].strip()
-                self.logger.info(f"Package architecture: {package_architecture}")
+                self.logger.debug(f"Package architecture: {package_architecture}")
+                break
+
+        if not package_architecture:
+            self.logger.error("ERROR: Could not find package architecture in the output.")
+            return None
 
         return package_architecture
 
@@ -280,7 +284,7 @@ class PackageHandler:
         upstream_link = self.web_scraper.find_element(response, 'th', string='Upstream URL:')
         if upstream_link:
             upstream_url = upstream_link.find_next_sibling('td').find('a').get('href')
-            self.logger.info(f"Upstream URL: {upstream_url}")
+            self.logger.debug(f"Package upstream URL: {upstream_url}")
             return upstream_url
         else:
             self.logger.error(f"ERROR: Couldn't find node 'Upstream URL:' on {url}")
