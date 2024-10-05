@@ -24,19 +24,31 @@ class ConfigHandler:
         self.setup_logging()
 
     def setup_logging(self):
-        logging.basicConfig(
-            filename=self.logs_path + self.dt_string_logging,
-            format="%(asctime)s %(message)s",
-            filemode="w")
-        self.logger = logging.getLogger()
-        self.logger.setLevel(logging.INFO)
+        try:
+            logging.basicConfig(
+                filename=self.logs_path + self.dt_string_logging,
+                format="%(asctime)s %(message)s",
+                filemode="w")
+        except (FileNotFoundError, PermissionError) as ex:
+            print(f"Error setting up log file: {ex}")
+            return
 
-        # Output the logging also to the console
-        stream = logging.StreamHandler()
-        stream.setLevel(logging.INFO)
-        streamformat = logging.Formatter("%(message)s")
-        stream.setFormatter(streamformat)
-        self.logger.addHandler(stream)
+        try:
+            self.logger = logging.getLogger()
+            self.logger.setLevel(logging.DEBUG)
+
+            # Output the logging also to the console
+            stream = logging.StreamHandler()
+            stream.setLevel(logging.DEBUG)
+            streamformat = logging.Formatter("%(message)s")
+            stream.setFormatter(streamformat)
+
+            # Check if stream handler is already added to avoid duplicates
+            if not any(isinstance(handler, logging.StreamHandler) for handler in self.logger.handlers):
+                self.logger.addHandler(stream)
+        except Exception as ex:
+            print(f"Error setting up logger: {ex}")
+            return
 
     def load_config(self) -> Optional[Dict[str, Any]]:
         try:
