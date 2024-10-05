@@ -37,11 +37,10 @@ def main():
             for commit_message, commit_url, commit_tag in package_changelog:
                 logger.info(f"- {commit_message}")
                 logger.info(f"\t{commit_url}")
-
-            config_handler.write_changelog(package, package_changelog)
         else:
             logger.info(f"No changelog for package: {package.package_name} found.")
-            config_handler.write_changelog(package, package_changelog)
+
+        config_handler.write_changelog(package, package_changelog)
         logger.info("--------------------------------")
 
 if __name__ == "__main__":
