@@ -45,14 +45,18 @@ class PackageHandler:
             # Update the local mirror
             update_process = subprocess.run(
                 ["sudo", "pacman", "-Sy"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL)
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True, # This will prevent the output from doing this: "b'PACKAGE"
+                check=True) # This will raise an exception if the command fails
 
+            # Get the list of upgradable packages
             process = subprocess.run(
                 ["sudo", "pacman", "-Qu"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True) # use text=True to prevent it from doing this: "b'PACKAGE"
+                text=True, # This will prevent the output from doing this: "b'PACKAGE"
+                check=True) # This will raise an exception if the command fails
 
             packages_to_update = process.stdout.splitlines()
             packages_to_update = self.split_package_information(packages_to_update)
@@ -60,7 +64,7 @@ class PackageHandler:
         except subprocess.CalledProcessError as ex:
             self.logger.error(f"ERROR: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
             self.logger.error("Standard Error:")
-            self.logger.error(e.stderr)
+            self.logger.error(ex.stderr)
             return None
         except PermissionError:
             self.logger.error("ERROR: Permission denied. Are you sure you have the necessary permissions to run this command?")
