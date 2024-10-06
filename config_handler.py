@@ -46,9 +46,7 @@ class ConfigHandler:
             streamformat = logging.Formatter("%(message)s")
             stream.setFormatter(streamformat)
 
-            # Check if stream handler is already added to avoid duplicates
-            if not any(isinstance(handler, logging.StreamHandler) for handler in self.logger.handlers):
-                self.logger.addHandler(stream)
+            self.logger.addHandler(stream)
         except Exception as ex:
             print(f"Error setting up logger: {ex}")
             return
