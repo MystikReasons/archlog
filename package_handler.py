@@ -255,9 +255,13 @@ class PackageHandler:
                     not second_source_tag or not last_source_tag):
                     return None
                 else:
-                    package_changelog += self.get_changelog_compare_package_tags(package_upstream_url,
-                                                                                 second_source_tag,
-                                                                                 last_source_tag)
+                    result = self.get_changelog_compare_package_tags(package_upstream_url,
+                                                                      second_source_tag,
+                                                                      last_source_tag)
+                    if result is None:
+                        return None
+                    else:
+                        package_changelog += result
         else:
             self.logger.info("No intermediate tags found")
 
