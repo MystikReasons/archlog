@@ -413,11 +413,15 @@ class PackageHandler:
 
             for source_url in source_urls:
                 source_url = source_url.get_text(strip=True)
+                self.logger.debug(f"Source URL raw: {source_url}")
                 
                 # 'source_url' could extract something like this:
                 # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
                 # We only need this segment: https://gitlab.freedesktop.org/pipewire/
-                match = re.search(r"https://.*(?=\.git)", source_url)
+                if ".git" in source_url:
+                    match = re.search(r"https://.*(?=\.git)", source_url)
+                else:
+                    match = re.search(r"https://.*(?=#)", source_url)
 
                 if match:
                     source_url = match.group(0)
