@@ -7,7 +7,7 @@ class WebScraper:
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=True)
 
-    def fetch_page_content(self, url, retries=3, delay=15000):
+    def fetch_page_content(self, url, retries=3, delay=5000):
         attempt = 0
         while attempt < retries:
             try:
