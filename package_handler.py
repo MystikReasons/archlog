@@ -282,8 +282,18 @@ class PackageHandler:
                     current_version_altered = 'v' + package.current_main.replace('1:', '')
                     new_version_altered = 'v' + package.new_main.replace('1:', '')
 
-                    # Differentiate between 'Plasma' and 'Frameworks' package
-                    base_url = 'https://invent.kde.org/plasma/' if 'plasma' in url else 'https://invent.kde.org/frameworks/'
+                    # Differentiate between different KDE package groups (Gitlab)
+                    if 'plasma' in url:
+                        base_url = 'https://invent.kde.org/plasma/'
+                    elif 'frameworks' in url:
+                        base_url = 'https://invent.kde.org/frameworks/'
+                    elif 'utilities' in url:
+                        base_url = 'https://invent.kde.org/utilities/'
+                    elif 'libraries' in url:
+                        base_url = 'https://invent.kde.org/libraries'
+                    else:
+                        self.logger.error(f"ERROR: Unknown KDE Gitlab group in: {url}")
+                        return None
 
                     package_changelog = self.get_changelog_compare_package_tags(base_url + package.package_name,
                                                                                 current_version_altered,
