@@ -732,8 +732,13 @@ class PackageHandler:
         # Source code hosting side: 1-1.12.2-1 -> 1-13.2-1 -> 1-1.12.2-2
 
         intermediate_tags = package_tags[start_index + 1:end_index]
-
+        
         if intermediate_tags:
+            # We need to reverse the found intermediate tags since source hosting sites always display
+            # the tags from newest to oldest but we want to compare our current version with one version
+            # newer and not directly with the newest.
+            intermediate_tags.reverse()
+
             return intermediate_tags
         else:
             return None
