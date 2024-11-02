@@ -183,7 +183,7 @@ class PackageHandler:
                     first_compare_version = package.current_version_altered
                 else:
                     first_compare_main = '-'.join(intermediate_tags[index-1][0].split('-')[:2])
-                    first_compare_suffix = package.intermediate_tags[index-1][1].split('-')[2]
+                    first_compare_suffix = intermediate_tags[index-1][1].split('-')[2]
                     first_compare_version = intermediate_tags[index-1][0]
                 
                 # Some package tags can look like this:
