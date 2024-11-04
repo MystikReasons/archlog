@@ -137,7 +137,8 @@ class PackageHandler:
 
         return packages_restructured
 
-    def get_package_changelog(self, package: List[namedtuple]) -> List[Tuple[str, str, str]]:
+        package_changelog = []
+
         # To determine the exact arch package-adress we need the architecture and repository
         #                         repository  architecture
         #                                 |    |
@@ -179,7 +180,7 @@ class PackageHandler:
         intermediate_tags = self.find_intermediate_tags(arch_package_tags, package.current_version, package.new_version)
         if intermediate_tags:
             self.logger.info(f"Intermediate tags: {intermediate_tags}")
-            self.handle_intermediate_tags(intermediate_tags, package, package_source_files_url, package_upstream_url)
+            package_changelog += self.handle_intermediate_tags(intermediate_tags, package, package_source_files_url, package_upstream_url)
         else:
             self.logger.info("No intermediate tags found")
 
@@ -187,20 +188,17 @@ class PackageHandler:
         # Example: 1.16.5-2 -> 1.17.5-1
         if package.current_main != package.new_main:
             # Always get the Arch package changelog too, which is the same as the "minor" release case
-            package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
-                                                                        package.current_version_altered,
-                                                                        package.new_version_altered,
-                                                                        package.package_name)
+            package_changelog += self.get_changelog_compare_package_tags(package_source_files_url,
+                                                                         package.current_version_altered,
+                                                                         package.new_version_altered,
+                                                                         package.package_name)
 
             match package_upstream_url:
                 case url if 'github.com' in url:
-                    result = self.get_changelog_compare_package_tags(package_upstream_url, 
-                                                                     package.current_version_altered, 
-                                                                     package.new_version_altered,
-                                                                     arch_package_name)
-
-                    if result:
-                            package_changelog += result
+                    package_changelog += self.get_changelog_compare_package_tags(package_upstream_url, 
+                                                                                 package.current_version_altered, 
+                                                                                 package.new_version_altered,
+                                                                                 arch_package_name)
 
                 case url if 'gitlab.com' in url:
                     package_changelog += self.get_gitlab_changelog(package_upstream_url, package.current_main, package.new_main)
@@ -223,13 +221,10 @@ class PackageHandler:
                         self.logger.error(f"ERROR: Unknown KDE Gitlab group in: {url}")
                         return package_changelog if package_changelog else None
 
-                    result = self.get_changelog_compare_package_tags(base_url + package.package_name,
-                                                                     current_version_altered,
-                                                                     new_version_altered,
-                                                                     arch_package_name)
-
-                    if result:
-                            package_changelog += result
+                    package_changelog += self.get_changelog_compare_package_tags(base_url + package.package_name,
+                                                                                 current_version_altered,
+                                                                                 new_version_altered,
+                                                                                 arch_package_name)
 
                 case _:
                     current_tag_url = package_source_files_url + '/-/blob/' + package.current_version_altered + '/.SRCINFO'
@@ -250,13 +245,10 @@ class PackageHandler:
                         not first_source_tag or not second_source_tag):
                         return package_changelog if package_changelog else None
                     else:
-                        result = self.get_changelog_compare_package_tags(first_source_url,
-                                                                         first_source_tag,
-                                                                         second_source_tag,
-                                                                         arch_package_name)
-                        
-                        if result:
-                            package_changelog += result
+                        package_changelog += self.get_changelog_compare_package_tags(first_source_url,
+                                                                                     first_source_tag,
+                                                                                     second_source_tag,
+                                                                                     arch_package_name)
 
         # Check if there was a minor release
         # Example: 1.16.5-2 -> 1.16.5-3
@@ -264,15 +256,15 @@ class PackageHandler:
             # Some Arch packages do have versions that look like this: 1:1.16.5-2
             # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
             # In order to make a tag compare on Gitlab, use the altered versions
-            package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
-                                                                        package.current_version_altered,
-                                                                        package.new_version_altered,
-                                                                        package.package_name)
+            package_changelog += self.get_changelog_compare_package_tags(package_source_files_url,
+                                                                         package.current_version_altered,
+                                                                         package.new_version_altered,
+                                                                         package.package_name)
 
-        if not package_changelog:
-            return None
-        else:
+        if package_changelog:
             return package_changelog
+        else:
+            return None
 
     def handle_intermediate_tags(self, intermediate_tags, package: List[namedtuple], package_source_files_url, package_upstream_url):
         for index, (release, date) in enumerate(intermediate_tags):
