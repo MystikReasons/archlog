@@ -1,6 +1,6 @@
 from typing import Optional, List, Tuple
 from collections import namedtuple
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from web_scraper import WebScraper
 import re
 import subprocess
@@ -161,6 +161,9 @@ class PackageHandler:
             return None
 
         ## TODO: Check if the source files (PKGBUILD, etc.) did receive some updates beside pkver, pkgrel, etc...
+        # Always extract the package name from Arch's source control repository.
+        # Example: https://gitlab.archlinux.org/archlinux/packaging/packages/nss -> nss
+        arch_package_name = urlparse(package_source_files_url).path.rstrip("/").split("/")[-1]
 
         # Check if there were multiple releases on Arch side (either major or minor)
         # This will check the current local version with the first intermediate tag and then it will shift.
@@ -170,6 +173,7 @@ class PackageHandler:
         arch_package_tags = self.get_package_tags(package_source_files_url + '/-/tags')
 
         if not arch_package_tags:
+            self.logger.error(f"ERROR: {arch_package_name}: Couldn't find any arch package tags")
             return None
 
         intermediate_tags = self.find_intermediate_tags(arch_package_tags, package.current_version, package.new_version)
@@ -182,14 +186,24 @@ class PackageHandler:
         # Check if there was a major release
         # Example: 1.16.5-2 -> 1.17.5-1
         if package.current_main != package.new_main:
+            # Always get the Arch package changelog too, which is the same as the "minor" release case
+            package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
+                                                                        package.current_version_altered,
+                                                                        package.new_version_altered,
+                                                                        package.package_name)
+
             match package_upstream_url:
                 case url if 'github.com' in url:
-                    package_changelog = self.get_changelog_compare_package_tags(package_upstream_url, 
-                                                                                package.current_version_altered, 
-                                                                                package.new_version_altered)
+                    result = self.get_changelog_compare_package_tags(package_upstream_url, 
+                                                                     package.current_version_altered, 
+                                                                     package.new_version_altered,
+                                                                     arch_package_name)
+
+                    if result:
+                            package_changelog += result
 
                 case url if 'gitlab.com' in url:
-                    package_changelog = self.get_gitlab_changelog(package_upstream_url, package.current_main, package.new_main)
+                    package_changelog += self.get_gitlab_changelog(package_upstream_url, package.current_main, package.new_main)
 
                 case url if 'kde.org' in url:
                     # KDE tags look like this: v6.1.3 while Arch uses it like this 1:6.1.3-1
@@ -207,11 +221,15 @@ class PackageHandler:
                         base_url = 'https://invent.kde.org/libraries'
                     else:
                         self.logger.error(f"ERROR: Unknown KDE Gitlab group in: {url}")
-                        return None
+                        return package_changelog if package_changelog else None
 
-                    package_changelog = self.get_changelog_compare_package_tags(base_url + package.package_name,
-                                                                                current_version_altered,
-                                                                                new_version_altered)
+                    result = self.get_changelog_compare_package_tags(base_url + package.package_name,
+                                                                     current_version_altered,
+                                                                     new_version_altered,
+                                                                     arch_package_name)
+
+                    if result:
+                            package_changelog += result
 
                 case _:
                     current_tag_url = package_source_files_url + '/-/blob/' + package.current_version_altered + '/.SRCINFO'
@@ -226,20 +244,19 @@ class PackageHandler:
                     second_source_tag = self.get_arch_package_source_tag(new_tag_url)
 
                     if (first_source_url != second_source_url):
-                        return None
+                        return package_changelog if package_changelog else None
 
                     if (not first_source_url or not second_source_url and
                         not first_source_tag or not second_source_tag):
-                        return None
+                        return package_changelog if package_changelog else None
                     else:
-                        package_changelog = self.get_changelog_compare_package_tags(first_source_url,
-                                                                                    first_source_tag,
-                                                                                    second_source_tag)
-
-            if not package_changelog:
-                return None
-            else:
-                return package_changelog
+                        result = self.get_changelog_compare_package_tags(first_source_url,
+                                                                         first_source_tag,
+                                                                         second_source_tag,
+                                                                         arch_package_name)
+                        
+                        if result:
+                            package_changelog += result
 
         # Check if there was a minor release
         # Example: 1.16.5-2 -> 1.16.5-3
@@ -249,12 +266,13 @@ class PackageHandler:
             # In order to make a tag compare on Gitlab, use the altered versions
             package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
                                                                         package.current_version_altered,
-                                                                        package.new_version_altered)
+                                                                        package.new_version_altered,
+                                                                        package.package_name)
 
-            if not package_changelog:
-                return None
-            else:
-                return package_changelog
+        if not package_changelog:
+            return None
+        else:
+            return package_changelog
 
     def handle_intermediate_tags(self, intermediate_tags, package: List[namedtuple], package_source_files_url, package_upstream_url):
         for index, (release, date) in enumerate(intermediate_tags):
@@ -660,7 +678,7 @@ class PackageHandler:
 
 
 
-    def get_changelog_compare_package_tags(self, source: str, current_tag: str, new_tag: str) -> List[Tuple[str, str, str]]:
+    def get_changelog_compare_package_tags(self, source: str, current_tag: str, new_tag: str, package_name: str) -> List[Tuple[str, str, str, str]]:
         """
         Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
 
@@ -691,8 +709,9 @@ class PackageHandler:
         commit_messages = [commit.get_text(strip=True) for commit in commits]
         commit_urls = [urljoin(source, commit.get('href')) for commit in commits]
         version_tags = [new_tag] * len(commit_messages)
+        package_names = [package_name] * len(commit_messages)
 
-        combined_info = list(zip(commit_messages, commit_urls, version_tags))
+        combined_info = list(zip(commit_messages, commit_urls, version_tags, package_names))
 
         if combined_info:
             return combined_info

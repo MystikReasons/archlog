@@ -60,8 +60,8 @@ class ConfigHandler:
             return None
         return config
 
-    def write_changelog(self, package, package_changelog: List[Tuple[str, str, str]]):
-        changelog_filename=self.changelog_path + self.dt_string_changelog
+    def write_changelog(self, package, package_changelog: List[Tuple[str, str, str, str]]):
+        changelog_filename = self.changelog_path + self.dt_string_changelog
 
         if os.path.exists(changelog_filename):
             with open(changelog_filename, "r") as json_read_file:
@@ -82,17 +82,23 @@ class ConfigHandler:
         versions_dict = {}
         
         if package_changelog:
-            for commit_message, commit_url, commit_tag in package_changelog:
-                if commit_tag not in versions_dict:
-                    versions_dict[commit_tag] = []
+            for changelog_message, package_url, package_tag, package_type in package_changelog:
+                if package_tag not in versions_dict:
+                    versions_dict[package_tag] = {"changelog Arch package": [], "changelog origin package": []}
                 
-                versions_dict[commit_tag].append({
-                    "commit message": commit_message,
-                    "commit URL": commit_url
-                })
+                if package_type == package.package_name:
+                    versions_dict[package_tag][f"changelog Arch package"].append({
+                        "commit message": changelog_message,
+                        "commit URL": package_url
+                    })
+                else:
+                    versions_dict[package_tag][f"changelog origin package"].append({
+                        "commit message": changelog_message,
+                        "commit URL": package_url
+                    })
         else:
             version_tag = package.current_version
-            versions_dict[version_tag] = []
+            versions_dict[version_tag] = {"changelog Arch package": [], "changelog origin package": []}
         
         for versionTag, changelog in versions_dict.items():
             existing_data[package.package_name]["versions"].append({

@@ -34,9 +34,9 @@ def main():
 
         if package_changelog:
             logger.info("Changelog:")
-            for commit_message, commit_url, commit_tag in package_changelog:
-                logger.info(f"- {commit_message}")
-                logger.info(f"\t{commit_url}")
+            for message, url, tag, package_type in package_changelog:
+                logger.info(f"- {message}")
+                logger.info(f"\t{url}")
         else:
             logger.info(f"No changelog for package: {package.package_name} found.")
 
