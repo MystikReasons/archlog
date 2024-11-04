@@ -175,93 +175,7 @@ class PackageHandler:
         intermediate_tags = self.find_intermediate_tags(arch_package_tags, package.current_version, package.new_version)
         if intermediate_tags:
             self.logger.info(f"Intermediate tags: {intermediate_tags}")
-
-            for index, (release, date) in enumerate(intermediate_tags):
-                if (index == 0):
-                    first_compare_main = package.current_main_altered
-                    first_compare_suffix = package.current_suffix
-                    first_compare_version = package.current_version_altered
-                else:
-                    first_compare_main = '-'.join(intermediate_tags[index-1][0].split('-')[:2])
-                    first_compare_suffix = intermediate_tags[index-1][1].split('-')[2]
-                    first_compare_version = intermediate_tags[index-1][0]
-                
-                # Some package tags can look like this:
-                # 1-16.5-2 or 20240526-1
-                if (release.count('-') >= 2):
-                    second_compare_main = release.split('-')[0].replace('1:', '1-')
-                    second_compare_suffix = release.split('-')[2]
-                else:
-                    second_compare_main = release.split('-')[0].replace('1:', '1-')
-                    second_compare_suffix = release.split('-')[1]
-
-                # Check if there was a minor release in between
-                # Example: 1.16.5-2 -> 1.16.5-3
-                # Some Arch packages do have versions that look like this: 1:1.16.5-2
-                # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
-                # In order to make a tag compare on Gitlab, use the altered versions
-                # TODO: An oberen Code anpassen
-                if (first_compare_main == second_compare_main and
-                    first_compare_suffix != second_compare_suffix):
-                    self.logger.debug(f"{release} is a minor intermediate release")
-
-                    package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
-                                                                                first_compare_version,
-                                                                                release)
-
-                # Check if there was a major release in between
-                elif first_compare_main != second_compare_main:
-                    self.logger.debug(f"{release} is a major intermediate release")
-
-                    # Check if the 'source' does contain something like gitlab or github
-                    # when the 'Upstream URL' does not contain another source code hosting website
-                    # if ('github.com' not in package_upstream_url or
-                    #     'gitlab.com' not in package_upstream_url or
-                    #     'kde.org' not in package_upstream_url):
-                    first_tag_url = package_source_files_url + '/-/blob/' + first_compare_version + '/.SRCINFO'
-                    second_tag_url = package_source_files_url + '/-/blob/' + release + '/.SRCINFO'
-                    self.logger.debug(f"First tag URL: {first_tag_url}")
-                    self.logger.debug(f"Second tag URL: {second_tag_url}")
-                    # https://gitlab.archlinux.org/archlinux/packaging/packages/pipewire/-/blob/1-1.2.3-1/.SRCINFO
-
-                    first_source_url = self.get_arch_package_source_url(first_tag_url)
-                    second_source_url = self.get_arch_package_source_url(second_tag_url)
-                    first_source_tag = self.get_arch_package_source_tag(first_tag_url)
-                    second_source_tag = self.get_arch_package_source_tag(second_tag_url)
-
-                    if (first_source_url != second_source_url):
-                        return None
-
-                    if (not first_source_url or not second_source_url and
-                        not first_source_tag or not second_source_tag):
-                        return None
-                    else:
-                        package_changelog = self.get_changelog_compare_package_tags(package_upstream_url,
-                                                                                    first_source_tag,
-                                                                                    second_source_tag)
-
-            # Check if the last intermediate tag is a major release
-            if second_compare_main != package.new_version:
-                self.logger.info(f"{package.new_version_altered} is a major release (afer intermediate release)")
-
-                last_tag_url = package_source_files_url + '/-/blob/' + package.new_version + '/.SRCINFO'
-                last_source_url = self.get_arch_package_source_url(last_tag_url)
-                last_source_tag = self.get_arch_package_source_tag(last_tag_url)
-
-                if (second_source_url != last_source_url):
-                        return None
-
-                if (not second_source_url or not last_source_url and
-                    not second_source_tag or not last_source_tag):
-                    return None
-                else:
-                    result = self.get_changelog_compare_package_tags(package_upstream_url,
-                                                                      second_source_tag,
-                                                                      last_source_tag)
-                    if result is None:
-                        return None
-                    else:
-                        package_changelog += result
+            self.handle_intermediate_tags(intermediate_tags, package, package_source_files_url, package_upstream_url)
         else:
             self.logger.info("No intermediate tags found")
 
@@ -342,7 +256,113 @@ class PackageHandler:
             else:
                 return package_changelog
 
-        return package_changelog
+    def handle_intermediate_tags(self, intermediate_tags, package: List[namedtuple], package_source_files_url, package_upstream_url):
+        for index, (release, date) in enumerate(intermediate_tags):
+            if (index == 0):
+                first_compare_main = package.current_main_altered
+                first_compare_suffix = package.current_suffix
+                first_compare_version = package.current_version_altered
+            else:
+                first_compare_main = '-'.join(intermediate_tags[index-1][0].split('-')[:2])
+                first_compare_suffix = intermediate_tags[index-1][1].split('-')[2]
+                first_compare_version = intermediate_tags[index-1][0]
+                
+            # Some package tags can look like this:
+            # 1-16.5-2 or 20240526-1
+            if (release.count('-') >= 2):
+                second_compare_main = release.split('-')[0].replace('1:', '1-')
+                second_compare_suffix = release.split('-')[2]
+            else:
+                second_compare_main = release.split('-')[0].replace('1:', '1-')
+                second_compare_suffix = release.split('-')[1]
+
+            # Check if there was a minor release in between
+            # Example: 1.16.5-2 -> 1.16.5-3
+            # Some Arch packages do have versions that look like this: 1:1.16.5-2
+            # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
+            # In order to make a tag compare on Gitlab, use the altered versions
+            # TODO: An oberen Code anpassen
+            if (first_compare_main == second_compare_main and
+                first_compare_suffix != second_compare_suffix):
+                self.logger.debug(f"{release} is a minor intermediate release")
+
+                package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
+                                                                                first_compare_version,
+                                                                                release,
+                                                                                package.package_name)
+
+            # Check if there was a major release in between
+            elif first_compare_main != second_compare_main:
+                self.logger.debug(f"{release} is a major intermediate release")
+
+                # Check if the 'source' does contain something like gitlab or github
+                # when the 'Upstream URL' does not contain another source code hosting website
+                first_tag_url = package_source_files_url + '/-/blob/' + first_compare_version + '/.SRCINFO'
+                second_tag_url = package_source_files_url + '/-/blob/' + release + '/.SRCINFO'
+                self.logger.debug(f"First tag URL: {first_tag_url}")
+                self.logger.debug(f"Second tag URL: {second_tag_url}")
+                # https://gitlab.archlinux.org/archlinux/packaging/packages/pipewire/-/blob/1-1.2.3-1/.SRCINFO
+
+                first_source_url = self.get_arch_package_source_url(first_tag_url)
+                second_source_url = self.get_arch_package_source_url(second_tag_url)
+                first_source_tag = self.get_arch_package_source_tag(first_tag_url)
+                second_source_tag = self.get_arch_package_source_tag(second_tag_url)
+
+                # Always get the Arch package changelog too, which is the same as the "minor" release case
+                package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
+                                                                                first_source_tag,
+                                                                                second_source_tag,
+                                                                                package.package_name)
+
+                if (first_source_url != second_source_url):
+                    return None
+
+                if (not first_source_url or not second_source_url and
+                    not first_source_tag or not second_source_tag):
+                        return None
+                else:
+                    result = self.get_changelog_compare_package_tags(package_upstream_url,
+                                                                     first_source_tag,
+                                                                     second_source_tag,
+                                                                     arch_package_name)
+
+                    if result:
+                        package_changelog += result
+
+        # Check if the last intermediate tag is a major release
+        if second_compare_main != package.new_version:
+            self.logger.info(f"{package.new_version_altered} is a major release (afer intermediate release)")
+
+            last_tag_url = package_source_files_url + '/-/blob/' + package.new_version + '/.SRCINFO'
+            last_source_url = self.get_arch_package_source_url(last_tag_url)
+            last_source_tag = self.get_arch_package_source_tag(last_tag_url)
+
+            # Always get the Arch package changelog too, which is the same as the "minor" release case
+            package_changelog = self.get_changelog_compare_package_tags(package_source_files_url,
+                                                                            second_source_tag,
+                                                                            last_source_tag,
+                                                                            package.package_name)
+
+            if (second_source_url != last_source_url):
+                return None
+
+            if (not second_source_url or not last_source_url and
+                not second_source_tag or not last_source_tag):
+                return None
+            else:
+                result = self.get_changelog_compare_package_tags(package_upstream_url,
+                                                                     second_source_tag,
+                                                                     last_source_tag,
+                                                                     arch_package_name)
+                if result is None:
+                    return None
+                else:
+                    package_changelog += result
+
+        if not package_changelog:
+                return None
+        else:
+            return package_changelog
 
     def get_package_architecture(self, package_name: str) -> str:
         """
