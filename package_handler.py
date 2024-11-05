@@ -180,7 +180,18 @@ class PackageHandler:
         intermediate_tags = self.find_intermediate_tags(arch_package_tags, package.current_version, package.new_version)
         if intermediate_tags:
             self.logger.info(f"Intermediate tags: {intermediate_tags}")
-            package_changelog += self.handle_intermediate_tags(intermediate_tags, package, package_source_files_url, package_upstream_url)
+            package_changelog_temp = self.handle_intermediate_tags(intermediate_tags, 
+                                                                   package, 
+                                                                   package_source_files_url, 
+                                                                   package_upstream_url)
+
+            if package_changelog_temp:
+                package_changelog += package_changelog_temp
+            
+            if package_changelog:
+                return package_changelog
+            else:
+                return None
         else:
             self.logger.info("No intermediate tags found")
 
@@ -188,20 +199,29 @@ class PackageHandler:
         # Example: 1.16.5-2 -> 1.17.5-1
         if package.current_main != package.new_main:
             # Always get the Arch package changelog too, which is the same as the "minor" release case
-            package_changelog += self.get_changelog_compare_package_tags(package_source_files_url,
+            package_changelog_temp = self.get_changelog_compare_package_tags(package_source_files_url,
                                                                          package.current_version_altered,
                                                                          package.new_version_altered,
                                                                          package.package_name)
 
+            if package_changelog_temp:
+                package_changelog += package_changelog_temp
+
             match package_upstream_url:
                 case url if 'github.com' in url:
-                    package_changelog += self.get_changelog_compare_package_tags(package_upstream_url, 
+                    package_changelog_temp = self.get_changelog_compare_package_tags(package_upstream_url, 
                                                                                  package.current_version_altered, 
                                                                                  package.new_version_altered,
                                                                                  arch_package_name)
+                    
+                    if package_changelog_temp:
+                        package_changelog += package_changelog_temp
 
                 case url if 'gitlab.com' in url:
-                    package_changelog += self.get_gitlab_changelog(package_upstream_url, package.current_main, package.new_main)
+                    package_changelog_temp = self.get_gitlab_changelog(package_upstream_url, package.current_main, package.new_main)
+
+                    if package_changelog_temp:
+                        package_changelog += package_changelog_temp
 
                 case url if 'kde.org' in url:
                     # KDE tags look like this: v6.1.3 while Arch uses it like this 1:6.1.3-1
@@ -221,10 +241,13 @@ class PackageHandler:
                         self.logger.error(f"ERROR: Unknown KDE Gitlab group in: {url}")
                         return package_changelog if package_changelog else None
 
-                    package_changelog += self.get_changelog_compare_package_tags(base_url + package.package_name,
+                    package_changelog_temp = self.get_changelog_compare_package_tags(base_url + package.package_name,
                                                                                  current_version_altered,
                                                                                  new_version_altered,
                                                                                  arch_package_name)
+
+                    if package_changelog_temp:
+                        package_changelog += package_changelog_temp
 
                 case _:
                     current_tag_url = package_source_files_url + '/-/blob/' + package.current_version_altered + '/.SRCINFO'
@@ -245,10 +268,13 @@ class PackageHandler:
                         not first_source_tag or not second_source_tag):
                         return package_changelog if package_changelog else None
                     else:
-                        package_changelog += self.get_changelog_compare_package_tags(first_source_url,
+                        package_changelog_temp = self.get_changelog_compare_package_tags(first_source_url,
                                                                                      first_source_tag,
                                                                                      second_source_tag,
                                                                                      arch_package_name)
+
+                        if package_changelog_temp:
+                            package_changelog += package_changelog_temp
 
         # Check if there was a minor release
         # Example: 1.16.5-2 -> 1.16.5-3
@@ -256,10 +282,13 @@ class PackageHandler:
             # Some Arch packages do have versions that look like this: 1:1.16.5-2
             # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
             # In order to make a tag compare on Gitlab, use the altered versions
-            package_changelog += self.get_changelog_compare_package_tags(package_source_files_url,
+            package_changelog_temp = self.get_changelog_compare_package_tags(package_source_files_url,
                                                                          package.current_version_altered,
                                                                          package.new_version_altered,
                                                                          package.package_name)
+
+            if package_changelog_temp:
+                package_changelog += package_changelog_temp
 
         if package_changelog:
             return package_changelog
