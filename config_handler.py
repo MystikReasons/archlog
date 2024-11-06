@@ -6,6 +6,7 @@ from datetime import datetime
 
 DEFAULT_CONFIG_FILE_NAME = "config.json"
 
+
 class ConfigHandler:
     def __init__(self, config_path=DEFAULT_CONFIG_FILE_NAME) -> None:
         self.dir_path = os.path.dirname(os.path.abspath(__file__))
@@ -31,7 +32,8 @@ class ConfigHandler:
             logging.basicConfig(
                 filename=self.logs_path + self.dt_string_logging,
                 format="%(asctime)s %(message)s",
-                filemode="w")
+                filemode="w",
+            )
         except (FileNotFoundError, PermissionError) as ex:
             print(f"Error setting up log file: {ex}")
             return
@@ -60,7 +62,9 @@ class ConfigHandler:
             return None
         return config
 
-    def write_changelog(self, package, package_changelog: List[Tuple[str, str, str, str]]):
+    def write_changelog(
+        self, package, package_changelog: List[Tuple[str, str, str, str, str]]
+    ):
         changelog_filename = self.changelog_path + self.dt_string_changelog
 
         if os.path.exists(changelog_filename):
@@ -76,35 +80,63 @@ class ConfigHandler:
             existing_data[package.package_name] = {
                 "current version": package.current_version,
                 "new version": package.new_version,
-                "versions": []
+                "versions": [],
             }
 
         versions_dict = {}
-        
+
         if package_changelog:
-            for changelog_message, package_url, package_tag, package_type in package_changelog:
+            for (
+                changelog_message,
+                package_url,
+                package_tag,
+                arch_package_name,
+                release_type,
+            ) in package_changelog:
                 if package_tag not in versions_dict:
-                    versions_dict[package_tag] = {"changelog Arch package": [], "changelog origin package": []}
-                
-                if package_type == package.package_name:
-                    versions_dict[package_tag][f"changelog Arch package"].append({
-                        "commit message": changelog_message,
-                        "commit URL": package_url
-                    })
+                    versions_dict[package_tag] = {
+                        "release-type": release_type,
+                        "changelog": {
+                            "changelog Arch package": [],
+                            "changelog origin package": [],
+                        },
+                    }
+
+                    if release_type == "minor":
+                        versions_dict[package_tag]["changelog"][
+                            "changelog origin package"
+                        ].append("- Not applicable, minor release -")
+
+                if arch_package_name == package.package_name:
+                    versions_dict[package_tag]["changelog"][
+                        "changelog Arch package"
+                    ].append(
+                        {"commit message": changelog_message, "commit URL": package_url}
+                    )
                 else:
-                    versions_dict[package_tag][f"changelog origin package"].append({
-                        "commit message": changelog_message,
-                        "commit URL": package_url
-                    })
+                    versions_dict[package_tag]["changelog"][
+                        "changelog origin package"
+                    ].append(
+                        {"commit message": changelog_message, "commit URL": package_url}
+                    )
         else:
             version_tag = package.current_version
-            versions_dict[version_tag] = {"changelog Arch package": [], "changelog origin package": []}
-        
-        for versionTag, changelog in versions_dict.items():
-            existing_data[package.package_name]["versions"].append({
-                "version-tag": versionTag,
-                "changelog": changelog
-            })
+            versions_dict[version_tag] = {
+                "release-type": "unknown",
+                "changelog": {
+                    "changelog Arch package": [],
+                    "changelog origin package": [],
+                },
+            }
+
+        for versionTag, changelog_data in versions_dict.items():
+            existing_data[package.package_name]["versions"].append(
+                {
+                    "version-tag": versionTag,
+                    "release-type": changelog_data["release-type"],
+                    "changelog": changelog_data["changelog"],
+                }
+            )
 
         # Write the updated website file data back to the file
         with open(changelog_filename, "w") as json_write_file:

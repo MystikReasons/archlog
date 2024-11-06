@@ -2,6 +2,7 @@ from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError
 from bs4 import BeautifulSoup
 
+
 class WebScraper:
     def __init__(self):
         self.playwright = sync_playwright().start()
@@ -17,9 +18,13 @@ class WebScraper:
                 content = page.content()
                 return content
             except TimeoutError:
-                self.logger.error(f"Timeout error while fetching {url}. Retrying... [{attempt+1}/{retries}]")
+                self.logger.error(
+                    f"Timeout error while fetching {url}. Retrying... [{attempt+1}/{retries}]"
+                )
             except Exception as ex:
-                self.logger.error(f"Error while fetching {url}: {ex}. Retrying... [{attempt+1}/{retries}]")
+                self.logger.error(
+                    f"Error while fetching {url}: {ex}. Retrying... [{attempt+1}/{retries}]"
+                )
             finally:
                 attempt += 1
                 if attempt < retries:
@@ -28,9 +33,10 @@ class WebScraper:
                         page.close()
                 else:
                     page.close()
-                
-        
-        self.logger.error(f"Failed to fetch content from {url} after {retries} retries.")
+
+        self.logger.error(
+            f"Failed to fetch content from {url} after {retries} retries."
+        )
         return None
 
     def find_all_elements(self, content, tag=None, **kwargs):
@@ -42,7 +48,7 @@ class WebScraper:
         :param kwargs: Additional attributes that are searched for (e.g. class_, id, attrs, etc.).
         :return: A list of the elements found.
         """
-        soup = BeautifulSoup(content, 'html.parser')
+        soup = BeautifulSoup(content, "html.parser")
         return soup.find_all(tag, **kwargs)
 
     def find_element(self, content, tag=None, **kwargs):
@@ -54,7 +60,7 @@ class WebScraper:
         :param kwargs: Additional attributes that are searched for (e.g. class_, id, attrs, etc.).
         :return: A single element which was found.
         """
-        soup = BeautifulSoup(content, 'html.parser')
+        soup = BeautifulSoup(content, "html.parser")
         return soup.find(tag, **kwargs)
 
     def close_browser(self):
