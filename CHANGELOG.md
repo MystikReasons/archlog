@@ -1,3 +1,11 @@
+# 1.0.3 ()
+
+### Features and enhancements
+
+### Bug fixes
+
+- **Package Handler** Fix: Minor label got mistaken as major in a specific case
+
 # 1.0.2 (2024-11-07)
 
 ### Features and enhancements

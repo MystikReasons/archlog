@@ -381,7 +381,7 @@ class PackageHandler:
                 package.current_version_altered,
                 package.new_version_altered,
                 package.package_name,
-                "major",
+                "minor",
             )
 
             if package_changelog_temp:
