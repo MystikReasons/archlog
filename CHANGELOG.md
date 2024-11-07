@@ -1,4 +1,4 @@
-# 1.0.2 (2024-11-06)
+# 1.0.2 (2024-11-07)
 
 ### Features and enhancements
 
@@ -11,6 +11,8 @@
 - **Package Handler** Refactor: Many enhancements and fixes to the intermediate tags handling
 - **Entire codebase** Refactor: Formatted the entire codebase with the Black formatter
 - **Package Handler** Added: Further information in the changelog json files regarding major/minor release
+- **README** Updated README
+- **Package Handler** Added: More docstrings for functions and type annotations for function parameters
 
 ### Bug fixes
 
@@ -18,6 +20,7 @@
 - **Package Handler** Fix: Corrected access to intermediate_tags, which was mistakenly accessed through the package object
 - **Package Handler** Fix: Corrected order of intermediate tags to be checked with current tag
 - **Package Handler** Fix: Rare cases of no package changelog could lead to a TypeError
+- **Package Handler** Fix: Change default package architecture search string to English
 
 # 1.0.1 (2024-10-06)
 
