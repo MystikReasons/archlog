@@ -8,7 +8,20 @@ import requests
 
 
 class PackageHandler:
-    def __init__(self, logger, config) -> None:
+    def __init__(
+        self, logger: logging.Logger, config: Optional[Dict[str, Any]]
+    ) -> None:
+        """
+        Initializes an instance of the class with the necessary configuration and logger.
+        Sets up the web scraper, logger, and loads the enabled repositories from the configuration.
+
+        :param logger: Logger object for logging messages.
+        :type logger: Logger
+        :param config: Configuration object containing all required settings.
+        :type config: Config
+        :raises KeyError: If the configuration lacks 'arch-repositories'.
+        :raises TypeError: If `logger` or `config` are not of the expected object types.
+        """
         self.web_scraper = WebScraper()
         self.logger = logger
         self.config = config
@@ -42,7 +55,6 @@ class PackageHandler:
 
         :return: A list of upgradable packages with the following structure.
         :rtype: List[str]
-
         :raises subprocess.CalledProcessError: If the `pacman` commands return a non-zero exit status.
             This includes errors like network issues.
         :raises PermissionError: If there is a permissions issue when trying to execute `sudo` commands.
@@ -94,7 +106,6 @@ class PackageHandler:
         :param packages: A list of strings, where each string contains a package name
                          followed by the current version and new version information.
         :type packages: List[str]
-
         :return: A list of namedTuples. Each namedtuple contains:
             - package_name (str): The name of the package
             - current_version (str): The current version of the package.
@@ -152,6 +163,21 @@ class PackageHandler:
     def get_package_changelog(
         self, package: List[namedtuple]
     ) -> List[Tuple[str, str, str, str, str]]:
+        """
+        Generates a changelog for a specified package by analyzing intermediate, minor, and major releases
+        between its current and new versions. It fetches and compares relevant metadata and tags from
+        Arch Linux repositories, as well as upstream sources like GitHub, GitLab, and KDE GitLab.
+
+        :param package: A named tuple containing the package information, such as the package name,
+                        current version, new version, main version tags, and suffixes.
+        :type package: List[namedtuple]
+        :return: A list of tuples containing changelog information for the package. Each tuple provides
+                details on each relevant change from intermediate, major, and minor versions, in the format:
+                (tag, date, version, description, change type).
+        :rtype: List[Tuple[str, str, str, str, str]]
+        :raises ValueError: If the package's repository or architecture information cannot be found.
+        :raises ConnectionError: If there are issues accessing external URLs for repository metadata.
+        """
         package_changelog = []
 
         # To determine the exact arch package-adress we need the architecture and repository
@@ -581,10 +607,8 @@ class PackageHandler:
         package, then parses the output to extract the architecture of the package.
 
         :param str package_name: The name of the upgradable package whose architecture should be retrieved.
-
         :return: The architecture of the specified package.
         :rtype: str
-
         :raises subprocess.CalledProcessError: If the `pacman` command returns a non-zero exit status.
             This may occur if the package name is incorrect or if there is an issue executing the command.
         :raises PermissionError: If there is a permissions issue when trying to execute the `pacman` command.
@@ -641,10 +665,8 @@ class PackageHandler:
         the `<span>` tag text and extracts the URL part before the final segment.
 
         :param str url: The URL of the webpage to retrieve and parse.
-
         :return: The extracted source URL if found, otherwise None.
         :rtype: str
-
         :raises requests.RequestException: If an error occurs during the HTTP request.
             This includes network errors, invalid URLs, or issues with the request itself.
         :raises Exception: For any other unexpected errors that occur during HTML parsing or URL extraction.
@@ -698,10 +720,8 @@ class PackageHandler:
         the `<span>` tag text and extracts the URL part before the final segment.
 
         :param str url: The URL of the webpage to retrieve and parse.
-
         :return: The extracted source URL if found, otherwise None.
         :rtype: str
-
         :raises requests.RequestException: If an error occurs during the HTTP request.
             This includes network errors, invalid URLs, or issues with the request itself.
         :raises Exception: For any other unexpected errors that occur during HTML parsing or URL extraction.
@@ -760,10 +780,8 @@ class PackageHandler:
         :param List[str] enabled_repositories: A list of enabled repository names to check (from config file).
         :param str package_name: The name of the package to check.
         :param str package_architecture: The architecture of the package (e.g., 'x86_64').
-
         :return: The name of the reachable repository if exactly one is found; otherwise, an error is logged and the program exits.
         :rtype: str
-
         :raises Exception: If multiple reachable repositories are found, indicating a configuration issue.
         """
         reachable_repository = []
@@ -793,6 +811,18 @@ class PackageHandler:
             return reachable_repository
 
     def get_package_upstream_url(self, url: str) -> Optional[str]:
+        """
+        Retrieves the upstream URL for a package from a specified Arch Linux package page.
+
+        :param url: The URL of the Arch Linux package page to scrape for the upstream URL.
+        :type url: str
+        :return: The upstream URL as a string if found, or None if the URL is not available or
+                if the node 'Upstream URL:' cannot be located.
+        :rtype: Optional[str]
+        :raises ConnectionError: If there is an issue fetching the page content.
+        :raises AttributeError: If there is an unexpected structure on the page that prevents
+                                accessing the upstream URL node.
+        """
         response = self.web_scraper.fetch_page_content(url)
         if response is None:
             return None
@@ -817,10 +847,8 @@ class PackageHandler:
         returns `None`.
 
         :param str url: The URL of the webpage to retrieve and parse.
-
         :return: The URL of the 'Source Files' link if found, or `None` if the link is not found.
         :rtype: Optional[str]
-
         :raises requests.RequestException: If an error occurs during the HTTP request.
             This includes network errors, invalid URLs, or issues with the request itself.
         :raises Exception: For any other unexpected errors that occur during HTML parsing.
@@ -862,11 +890,9 @@ class PackageHandler:
         tags with a version prefix of '1:' to '1-' for compatibility with repository host formats.
 
         :param str url: The URL of the webpage to retrieve and parse.
-
         :return: A list of tuples where each tuple contains a release tag and its associated timestamp.
                  If an error occurs during the request or parsing, or if no relevant data is found, an empty list is returned.
         :rtype: List[Tuple[str, str]]
-
         :raises requests.RequestException: If an error occurs during the HTTP request.
             This includes network errors, invalid URLs, or issues with the request itself.
         :raises Exception: For any other unexpected errors that occur during HTML parsing.
@@ -932,10 +958,8 @@ class PackageHandler:
         :param str new_tag: The tag to compare to.
         :param str package_name: The currently checked package name
         :param str release_type: minor, major or arch
-
         :return: A list of tuples where each tuple contains a commit message, its full URL and the version tag.
         :rtype: List[Tuple[str, str, str, str, str]]
-
         :raises requests.RequestException: If an error occurs during the HTTP request.
             This includes network errors, invalid URLs, or issues with the request itself.
         :raises Exception: For any other unexpected errors that occur during HTML parsing.
@@ -979,10 +1003,8 @@ class PackageHandler:
         that the website may be down or returning an error.
 
         :param str url: The URL of the website to check.
-
         :return: True if the website is reachable (status code 200), otherwise False.
         :rtype: bool
-
         :raises requests.RequestException: If an error occurs during the HTTP request.
             This includes network errors, invalid URLs, or issues with the request itself.
         """
@@ -1003,6 +1025,24 @@ class PackageHandler:
             return False
 
     def find_intermediate_tags(self, package_tags, current_tag: str, new_tag: str):
+        """
+        Finds and returns intermediate tags between the current and new version tags for a package.
+
+        This method looks for tags between the current and new versions within a list of package tags.
+        It ensures that intermediate versions are correctly identified, reversed if necessary, and returned
+        for further processing.
+
+        :param package_tags: A list of tuples containing release tags and their corresponding release times.
+        :type package_tags: List[Tuple[str, str]]
+        :param current_tag: The current version tag to start from.
+        :type current_tag: str
+        :param new_tag: The new version tag to search for.
+        :type new_tag: str
+        :return: A list of intermediate tags between the current and new versions, or None if no intermediate
+                tags are found.
+        :rtype: Optional[List[Tuple[str, str]]]
+        :raises ValueError: If neither the current_tag nor the new_tag is found in the package_tags.
+        """
         start_index = end_index = None
 
         current_tag_altered = current_tag.replace(":", "-")
