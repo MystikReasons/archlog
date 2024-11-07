@@ -649,7 +649,7 @@ class PackageHandler:
 
         if not package_architecture:
             self.logger.error(
-                "ERROR: Could not find package architecture in the output."
+                "ERROR: Could not find package architecture in the output. Is the system language something else than English?"
             )
             return None
 
@@ -1059,7 +1059,7 @@ class PackageHandler:
 
         if start_index is None or end_index is None:
             self.logger.error(
-                "ERROR: Intermediate tags. Either current_tag or new_tag was not found."
+                "ERROR: Intermediate tags. Either current_tag, new_tag or both were not found."
             )
             return None
 
@@ -1067,7 +1067,6 @@ class PackageHandler:
         # Example:
         # Client side:              1-1.12.2-1 (current version) -> 1-1.12.2-2 (new version)
         # Source code hosting side: 1-1.12.2-1 -> 1-13.2-1 -> 1-1.12.2-2
-
         intermediate_tags = package_tags[start_index + 1 : end_index]
 
         if intermediate_tags:
@@ -1085,6 +1084,7 @@ class PackageHandler:
     ) -> List[Tuple[str, str]]:
         self.logger.info("Checking Gitlab changelog")
 
+        # TODO: This function still lacks functionality
         # Check if Arch versions are the same as the tags on Gitlab
         package_tags = self.get_package_tags(url + "/-/tags")
         if package_tags:
