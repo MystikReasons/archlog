@@ -642,7 +642,7 @@ class PackageHandler:
         output = result.stdout.splitlines()
 
         for line in output:
-            if line.startswith("Architektur"):  # TODO: Currently language-dependent
+            if line.startswith("Architecture"):  # TODO: Currently language-dependent
                 package_architecture = line.split(":")[1].strip()
                 self.logger.debug(f"Package architecture: {package_architecture}")
                 break
