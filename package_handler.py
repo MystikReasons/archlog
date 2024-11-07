@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 from collections import namedtuple
 from urllib.parse import urljoin, urlparse
 from web_scraper import WebScraper
@@ -9,7 +9,7 @@ import requests
 
 class PackageHandler:
     def __init__(
-        self, logger: logging.Logger, config: Optional[Dict[str, Any]]
+        self, logger, config: Optional[Dict[str, Any]]
     ) -> None:
         """
         Initializes an instance of the class with the necessary configuration and logger.

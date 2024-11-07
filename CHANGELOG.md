@@ -21,6 +21,8 @@
 - **Package Handler** Fix: Corrected order of intermediate tags to be checked with current tag
 - **Package Handler** Fix: Rare cases of no package changelog could lead to a TypeError
 - **Package Handler** Fix: Change default package architecture search string to English
+- **Package Handler** Fix: Missing import for type annotation types
+- **Package Handler** Removed: Wrong type annotation for logger
 
 # 1.0.1 (2024-10-06)
 
