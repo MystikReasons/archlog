@@ -44,7 +44,7 @@ class ConfigHandler:
 
             # Output the logging also to the console
             stream = logging.StreamHandler()
-            stream.setLevel(logging.DEBUG)
+            stream.setLevel(logging.INFO)
             streamformat = logging.Formatter("%(message)s")
             stream.setFormatter(streamformat)
 
