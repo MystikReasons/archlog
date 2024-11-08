@@ -82,13 +82,11 @@ This script does currently only work with offical Arch packages, Flatpack, AUR e
 
 ## Installation
 - Clone or fork the repository
-- If the environment is externally managed (default behaviour in Arch Linux) you need to activate the virtual enviroment (venv) in the project folder with `source venv/bin/activate`
 - Only once: in the project folder run `pip install -r requirements.txt`
+    - If the environment is externally managed (default behaviour in Arch Linux) you need to install and enable the python virtual environment before running this command
 - Run the program with `python main.py`
 
 ## Build documentation with Sphinx
-If no /docs folder is available use the following command
-    - sudo docker run -it --rm -v $(pwd)/docs:/docs sphinxdoc/sphinx sphinx-quickstart
+If no /docs folder is available use the following command `sudo docker run -it --rm -v $(pwd)/docs:/docs sphinxdoc/sphinx sphinx-quickstart`
 
-Once that is available, you can for example generate a .html file with
-    - sudo docker run --rm -v $(pwd)/docs:/docs sphinxdoc/sphinx make html
+Once that is available, you can for example generate a .html file with `sudo docker run --rm -v $(pwd)/docs:/docs sphinxdoc/sphinx make html`
