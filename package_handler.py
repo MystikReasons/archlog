@@ -276,6 +276,7 @@ class PackageHandler:
                         package.new_version_altered,
                         arch_package_name,
                         "major",
+                        package.new_version_altered,
                     )
 
                     if package_changelog_temp:
@@ -370,6 +371,7 @@ class PackageHandler:
                         new_version_altered,
                         arch_package_name,
                         "major",
+                        package.new_version_altered,
                     )
 
                     if package_changelog_temp:
@@ -415,6 +417,7 @@ class PackageHandler:
                                 second_source_tag,
                                 arch_package_name,
                                 "major",
+                                package.new_version_altered,
                             )
                         )
 
@@ -545,6 +548,7 @@ class PackageHandler:
                     release,
                     package.package_name,
                     "arch",
+                    package.new_version_altered,
                 )
 
                 if package_changelog_temp:
@@ -567,6 +571,7 @@ class PackageHandler:
                         second_source_tag,
                         package.package_name,
                         "major",
+                        package.new_version_altered,
                     )
 
                     if package_changelog_temp:
@@ -604,6 +609,7 @@ class PackageHandler:
                 package.new_version,
                 package.package_name,
                 "arch",
+                package.new_version_altered,
             )
 
             if package_changelog_temp:
@@ -647,6 +653,7 @@ class PackageHandler:
                     last_source_tag,
                     package.package_name,
                     "major",
+                    package.new_version_altered,
                 )
 
                 if package_changelog_temp:
@@ -1005,6 +1012,7 @@ class PackageHandler:
         new_tag: str,
         package_name: str,
         release_type: str,
+        arch_new_tag: Optional[str] = None,
     ) -> List[Tuple[str, str, str, str, str]]:
         """
         Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
@@ -1016,8 +1024,10 @@ class PackageHandler:
         :param str source: The base URL of the Git repository.
         :param str current_tag: The tag to compare from.
         :param str new_tag: The tag to compare to.
-        :param str package_name: The currently checked package name
-        :param str release_type: minor, major or arch
+        :param str package_name: The currently checked package name.
+        :param str release_type: minor, major or arch.
+        :param Optional[str] arch_new_tag: This is only needed for major releases since the Arch package tag
+               and the origin package tag can differentiate (optional, defaults to None).
         :return: A list of tuples where each tuple contains a commit message, its full URL and the version tag.
         :rtype: List[Tuple[str, str, str, str, str]]
         :raises requests.RequestException: If an error occurs during the HTTP request.
@@ -1039,7 +1049,9 @@ class PackageHandler:
 
         commit_messages = [commit.get_text(strip=True) for commit in commits]
         commit_urls = [urljoin(source, commit.get("href")) for commit in commits]
-        version_tags = [new_tag] * len(commit_messages)
+        version_tags = [arch_new_tag if arch_new_tag else new_tag] * len(
+            commit_messages
+        )
         package_names = [package_name] * len(commit_messages)
         release_types = [release_type] * len(commit_messages)
 
