@@ -10,6 +10,7 @@
 ### Bug fixes
 
 - **Package Handler** Fix: Minor label got mistaken as major in a specific case
+- **Web Scraper** Fix: Limit Playwright to only use English as locale when crawling websites
 
 # 1.0.2 (2024-11-07)
 
