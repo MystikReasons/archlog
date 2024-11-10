@@ -290,24 +290,78 @@ class PackageHandler:
                         package_changelog += package_changelog_temp
 
                 case url if "kde.org" in url:
+                    kde_package_categories = [
+                        "plasma",
+                        "framework",
+                        "utilities",
+                        "libraries",
+                    ]
+
                     # KDE tags look like this: v6.1.3 while Arch uses it like this 1:6.1.3-1
                     current_version_altered = "v" + package.current_main.replace(
                         "1:", ""
                     )
                     new_version_altered = "v" + package.new_main.replace("1:", "")
 
+                    # The upstream link of KDE packages can look differently
+                    # - https://apps.kde.org/ark/
+                    # - https://community.kde.org/Frameworks
+                    # - https://kde.org/plasma-desktop/
+                    #
+                    # 1. Check if the upstream URL already contains the kde category
+                    #    - Example: https://archlinux.org/packages/extra/x86_64/ark/
+                    # 2. Try to open https://apps.kde.org/... and extract the category from there
+                    #    - Example: https://apps.kde.org/ark/
+                    # 3. Try to extract the category out of the `source = https://...` in .SRCINFO (To be implemented)
+                    #    - Example: https://gitlab.archlinux.org/archlinux/packaging/packages/ark/-/blob/main/.SRCINFO
+                    # 4. Brute force method, go through each KDE category and try if URL is reachable (To be implemented)
+                    #    - Example 1: https://invent.kde.org/frameworks/baloo-widgets
+                    #    - Example 2: https://invent.kde.org/libraries/baloo-widgets
+                    kde_category = next(
+                        (
+                            category
+                            for category in kde_package_categories
+                            if re.search(category, url, re.IGNORECASE)
+                        ),
+                        None,
+                    )
+
+                    if kde_category:
+                        self.logger.debug(f"KDE category: {kde_category}")
+                    else:
+                        kde_category_url = (
+                            "https://apps.kde.org/" + package.package_name
+                        )
+
+                        response = self.web_scraper.fetch_page_content(kde_category_url)
+                        kde_category_raw = self.web_scraper.find_element(
+                            response,
+                            "a",
+                            attrs={"href": re.compile(r"^/categories/.+")},
+                        )
+
+                        if kde_category_raw:
+                            kde_category = kde_category_raw.text.strip()
+                            self.logger.debug(f"KDE category: {kde_category}")
+                        else:
+                            self.logger.error(
+                                f"ERROR: Couldn't extract KDE package category from {kde_category_url}"
+                            )
+                            return None
+
                     # Differentiate between different KDE package groups (Gitlab)
-                    if "plasma" in url:
+                    if "plasma" in kde_category.lower():
                         base_url = "https://invent.kde.org/plasma/"
-                    elif "frameworks" in url:
+                    elif "framework" in kde_category.lower():
                         base_url = "https://invent.kde.org/frameworks/"
-                    elif "utilities" in url:
+                    elif "utilities" in kde_category.lower():
                         base_url = "https://invent.kde.org/utilities/"
-                    elif "libraries" in url:
+                    elif "libraries" in kde_category.lower():
                         base_url = "https://invent.kde.org/libraries"
                     else:
-
-                        self.logger.error(f"ERROR: Unknown KDE Gitlab group in: {url}")
+                        self.logger.error(
+                            f"ERROR: Unknown KDE Gitlab group in: {kde_category}"
+                        )
                         return package_changelog if package_changelog else None
 
                     package_changelog_temp = self.get_changelog_compare_package_tags(

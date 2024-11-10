@@ -6,6 +6,7 @@
 - **README** Updated README
 - **LICENSE** Added LICENSE
 - **Package Handler** Refactor: Added and modified logger messages
+- **Package Handler** Extended KDE package changelog detection
 
 ### Bug fixes
 
