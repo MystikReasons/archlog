@@ -12,6 +12,7 @@
 
 - **Package Handler** Fix: Minor label got mistaken as major in a specific case
 - **Web Scraper** Fix: Limit Playwright to only use English as locale when crawling websites
+- **Changelog** Fix: In some cases where the arch package tag and the origin package tag weren't the same it could have confused the changelog writer
 
 # 1.0.2 (2024-11-07)
 

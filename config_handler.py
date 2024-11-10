@@ -95,7 +95,9 @@ class ConfigHandler:
             ) in package_changelog:
                 if package_tag not in versions_dict:
                     versions_dict[package_tag] = {
-                        "release-type": release_type,
+                        "release-type": (
+                            "major" if release_type == "arch" else release_type
+                        ),
                         "changelog": {
                             "changelog Arch package": [],
                             "changelog origin package": [],
@@ -107,7 +109,10 @@ class ConfigHandler:
                             "changelog origin package"
                         ].append("- Not applicable, minor release -")
 
-                if arch_package_name == package.package_name:
+                if (
+                    arch_package_name == package.package_name
+                    and release_type != "major"
+                ):
                     versions_dict[package_tag]["changelog"][
                         "changelog Arch package"
                     ].append(

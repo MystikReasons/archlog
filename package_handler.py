@@ -262,7 +262,7 @@ class PackageHandler:
                 package.current_version_altered,
                 package.new_version_altered,
                 package.package_name,
-                "major",
+                "arch",
             )
 
             if package_changelog_temp:
@@ -544,7 +544,7 @@ class PackageHandler:
                     first_compare_version,
                     release,
                     package.package_name,
-                    "major",
+                    "arch",
                 )
 
                 if package_changelog_temp:
@@ -603,7 +603,7 @@ class PackageHandler:
                 release,
                 package.new_version,
                 package.package_name,
-                "major",
+                "arch",
             )
 
             if package_changelog_temp:
@@ -646,6 +646,7 @@ class PackageHandler:
                     second_source_tag,
                     last_source_tag,
                     package.package_name,
+                    "major",
                 )
 
                 if package_changelog_temp:
