@@ -347,7 +347,7 @@ class PackageHandler:
                             self.logger.error(
                                 f"ERROR: Couldn't extract KDE package category from {kde_category_url}"
                             )
-                            return None
+                            return package_changelog if package_changelog else None
 
                     # Differentiate between different KDE package groups (Gitlab)
                     if "plasma" in kde_category.lower():
