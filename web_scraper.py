@@ -12,7 +12,7 @@ class WebScraper:
         attempt = 0
         while attempt < retries:
             try:
-                page = self.browser.new_context(locale="en-US")
+                context = self.browser.new_context(locale="en-US")
 
                 page = context.new_page()
                 page.goto(url, timeout=60000)
