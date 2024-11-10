@@ -8,9 +8,7 @@ import requests
 
 
 class PackageHandler:
-    def __init__(
-        self, logger, config: Optional[Dict[str, Any]]
-    ) -> None:
+    def __init__(self, logger, config: Optional[Dict[str, Any]]) -> None:
         """
         Initializes an instance of the class with the necessary configuration and logger.
         Sets up the web scraper, logger, and loads the enabled repositories from the configuration.
@@ -256,6 +254,8 @@ class PackageHandler:
         # Check if there was a major release
         # Example: 1.16.5-2 -> 1.17.5-1
         if package.current_main != package.new_main:
+            self.logger.info(f"{package.new_version} is a major release")
+
             # Always get the Arch package changelog too, which is the same as the "minor" release case
             package_changelog_temp = self.get_changelog_compare_package_tags(
                 package_source_files_url,
@@ -306,6 +306,7 @@ class PackageHandler:
                     elif "libraries" in url:
                         base_url = "https://invent.kde.org/libraries"
                     else:
+
                         self.logger.error(f"ERROR: Unknown KDE Gitlab group in: {url}")
                         return package_changelog if package_changelog else None
 
@@ -373,6 +374,8 @@ class PackageHandler:
             and (package.current_suffix != package.new_suffix)
             and package_source_files_url
         ):
+            self.logger.info(f"{package.new_version} is a minor release")
+
             # Some Arch packages do have versions that look like this: 1:1.16.5-2
             # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
             # In order to make a tag compare on Gitlab, use the altered versions
@@ -444,7 +447,7 @@ class PackageHandler:
                 first_compare_main == second_compare_main
                 and first_compare_suffix != second_compare_suffix
             ):
-                self.logger.debug(f"{release} is a minor intermediate release")
+                self.logger.info(f"{release} is a minor intermediate release")
 
                 package_changelog_temp = self.get_changelog_compare_package_tags(
                     package_source_files_url,
@@ -459,7 +462,7 @@ class PackageHandler:
 
             # Check if there was a major release in between
             elif first_compare_main != second_compare_main:
-                self.logger.debug(f"{release} is a major intermediate release")
+                self.logger.info(f"{release} is a major intermediate release")
 
                 # Check if the 'source' does contain something like gitlab or github
                 # when the 'Upstream URL' does not contain another source code hosting website
@@ -922,7 +925,9 @@ class PackageHandler:
                 # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
                 # In order to make a tag compare on Gitlab, transform '1:' to '1-'
                 transformed_release = release.replace("1:", "1-")
-                self.logger.info(f"Release tag: {transformed_release} Time tag: {time}")
+                self.logger.debug(
+                    f"Release tag: {transformed_release} Time tag: {time}"
+                )
                 combined_info[index] = (transformed_release, time)
 
             return combined_info

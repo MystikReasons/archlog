@@ -2,6 +2,11 @@
 
 ### Features and enhancements
 
+- **Logger** Changed: Default displayed logging level is now INFO instead of DEBUG
+- **README** Updated README
+- **LICENSE** Added LICENSE
+- **Package Handler** Refactor: Added and modified logger messages
+
 ### Bug fixes
 
 - **Package Handler** Fix: Minor label got mistaken as major in a specific case
