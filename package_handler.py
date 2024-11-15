@@ -479,7 +479,7 @@ class PackageHandler:
                 else:
                     first_compare_main = (
                         intermediate_tags[index - 1][0]
-                        .split("-")[:1]
+                        .split("-")[0]
                         .replace("1:", "1-")
                     )
                     first_compare_suffix = intermediate_tags[index - 1][0].split("-")[1]

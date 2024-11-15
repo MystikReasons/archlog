@@ -15,6 +15,7 @@
 - **Changelog** Fix: In cases of major releases the changelog writer was confused with where to write the Arch package changelog and where to write the origin package changelog
 - **Changelog** Fix: In some cases where the arch package tag and the origin package tag weren't the same it could have confused the changelog writer
 - **Package Handler** Fix: A return case where it did not check if there already was package changelog stored and always returned None
+- **Package Handler** Fix: Prevent crash in intermediate tag handling by replacing invalid list operation with string slicing
 
 # 1.0.2 (2024-11-07)
 
