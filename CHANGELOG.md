@@ -7,6 +7,7 @@
 - **LICENSE** Added LICENSE
 - **Package Handler** Refactor: Added and modified logger messages
 - **Package Handler** Extended KDE package changelog detection
+- **Package Handler** Organized code snippets in intermediate tag handling more logically
 
 ### Bug fixes
 

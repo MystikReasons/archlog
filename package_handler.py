@@ -530,17 +530,13 @@ class PackageHandler:
                     + first_compare_version
                     + "/.SRCINFO"
                 )
+
                 second_tag_url = (
                     package_source_files_url + "/-/blob/" + release + "/.SRCINFO"
                 )
                 self.logger.debug(f"First tag URL: {first_tag_url}")
                 self.logger.debug(f"Second tag URL: {second_tag_url}")
                 # https://gitlab.archlinux.org/archlinux/packaging/packages/pipewire/-/blob/1-1.2.3-1/.SRCINFO
-
-                first_source_url = self.get_arch_package_source_url(first_tag_url)
-                second_source_url = self.get_arch_package_source_url(second_tag_url)
-                first_source_tag = self.get_arch_package_source_tag(first_tag_url)
-                second_source_tag = self.get_arch_package_source_tag(second_tag_url)
 
                 # Always get the Arch package changelog too, which is the same as the "minor" release case
                 package_changelog_temp = self.get_changelog_compare_package_tags(
@@ -554,6 +550,11 @@ class PackageHandler:
 
                 if package_changelog_temp:
                     package_changelog += package_changelog_temp
+
+                first_source_url = self.get_arch_package_source_url(first_tag_url)
+                second_source_url = self.get_arch_package_source_url(second_tag_url)
+                first_source_tag = self.get_arch_package_source_tag(first_tag_url)
+                second_source_tag = self.get_arch_package_source_tag(second_tag_url)
 
                 if first_source_url != second_source_url:
                     continue
