@@ -545,7 +545,6 @@ class PackageHandler:
                     release,
                     package.package_name,
                     "arch",
-                    package.new_version_altered,
                 )
 
                 if package_changelog_temp:
@@ -568,12 +567,12 @@ class PackageHandler:
                     continue
                 else:
                     package_changelog_temp = self.get_changelog_compare_package_tags(
-                        package_upstream_url,
+                        first_source_url,
                         first_source_tag,
                         second_source_tag,
                         package.package_name,
                         "major",
-                        package.new_version_altered,
+                        release,
                     )
 
                     if package_changelog_temp:
