@@ -512,6 +512,7 @@ class PackageHandler:
                     release,
                     package.package_name,
                     "minor",
+                    release,
                 )
 
                 if package_changelog_temp:
