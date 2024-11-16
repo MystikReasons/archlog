@@ -4,9 +4,10 @@ from bs4 import BeautifulSoup
 
 
 class WebScraper:
-    def __init__(self):
+    def __init__(self, logger):
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=True)
+        self.logger = logger
 
     def fetch_page_content(self, url, retries=3, delay=5000):
         attempt = 0

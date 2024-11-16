@@ -20,9 +20,9 @@ class PackageHandler:
         :raises KeyError: If the configuration lacks 'arch-repositories'.
         :raises TypeError: If `logger` or `config` are not of the expected object types.
         """
-        self.web_scraper = WebScraper()
         self.logger = logger
         self.config = config
+        self.web_scraper = WebScraper(self.logger)
         self.enabled_repositories = []
         self.PackageInfo = namedtuple(
             "PackageInfo",

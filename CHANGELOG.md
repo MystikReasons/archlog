@@ -11,12 +11,13 @@
 
 ### Bug fixes
 
-- **Package Handler** Fix: Minor label got mistaken as major in a specific case
 - **Web Scraper** Fix: Limit Playwright to only use English as locale when crawling websites
+- **Web Scraper** Fix: Added missing logger instance which could result in a crash
 - **Changelog** Fix: In cases of major releases the changelog writer was confused with where to write the Arch package changelog and where to write the origin package changelog
 - **Changelog** Fix: In some cases where the arch package tag and the origin package tag weren't the same it could have confused the changelog writer
 - **Changelog** Fix: In case of a minor intermediate tage it was possible that the version tag was not set with the Arch tag
 - **Changelog** Fix: More wrongly handed over tags in intermediate tag handling which could have led to wrong changelog tag sections
+- **Package Handler** Fix: Minor label got mistaken as major in a specific case
 - **Package Handler** Fix: A return case where it did not check if there already was package changelog stored and always returned None
 - **Package Handler** Fix: Prevent crash in intermediate tag handling by replacing invalid list operation with string slicing
 
