@@ -1019,21 +1019,34 @@ class PackageHandler:
         :param str new_tag: The tag to compare to.
         :param str package_name: The currently checked package name.
         :param str release_type: minor, major or arch.
-        :param Optional[str] arch_new_tag: This is only needed for major releases since the Arch package tag
-               and the origin package tag can differentiate (optional, defaults to None).
+        :param Optional[str] override_shown_tag: This is only for major releases since the Arch package tag
+               and the origin package tag can differentiate (optional, defaults to None). It is also needed
+               for intermediate releases when checking the Arch package.
         :return: A list of tuples where each tuple contains a commit message, its full URL and the version tag.
         :rtype: List[Tuple[str, str, str, str, str]]
         :raises requests.RequestException: If an error occurs during the HTTP request.
             This includes network errors, invalid URLs, or issues with the request itself.
         :raises Exception: For any other unexpected errors that occur during HTML parsing.
         """
-        compare_tags_url = source + "/-/compare/" + current_tag + "..." + new_tag
+        compare_tags_url = (
+            f"{source}/compare/{current_tag}...{new_tag}"
+            if "github" in source
+            else f"{source}/-/compare/{current_tag}...{new_tag}"
+        )
+
         self.logger.debug(f"Compare tags URL: {compare_tags_url}")
 
         response = self.web_scraper.fetch_page_content(compare_tags_url)
-        commits = self.web_scraper.find_all_elements(
-            response, "a", class_="commit-row-message"
-        )
+
+        if not response:
+            return None
+
+        kwargs = "Link--primary" if "github" in source else "commit-row-message"
+
+        # TODO: If the source hosting site is Github which can display commits only on multiple pages, how
+        #       should we handle that?
+        commits = self.web_scraper.find_all_elements(response, "a", class_=kwargs)
+
         if not commits:
             self.logger.debug(
                 f"No commit messages found in the response from {compare_tags_url}"

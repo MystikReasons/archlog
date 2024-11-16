@@ -1,4 +1,4 @@
-# 1.0.3 ()
+# 1.0.3 (2024-11-16)
 
 ### Features and enhancements
 
@@ -9,6 +9,7 @@
 - **Package Handler** Extended KDE package changelog detection
 - **Package Handler** Organized code snippets in intermediate tag handling more logically
 - **Package Handler** Simplified the differentiation between github and gitlab projects since it uses the same code
+- **Package Handler** Added first version of getting the changelog of Github hosted projects
 
 ### Bug fixes
 
