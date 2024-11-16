@@ -8,6 +8,7 @@
 - **Package Handler** Refactor: Added and modified logger messages
 - **Package Handler** Extended KDE package changelog detection
 - **Package Handler** Organized code snippets in intermediate tag handling more logically
+- **Package Handler** Simplified the differentiation between github and gitlab projects since it uses the same code
 
 ### Bug fixes
 

@@ -269,7 +269,7 @@ class PackageHandler:
                 package_changelog += package_changelog_temp
 
             match package_upstream_url:
-                case url if "github.com" in url:
+                case url if "github.com" in url or "gitlab.com" in url:
                     package_changelog_temp = self.get_changelog_compare_package_tags(
                         package_upstream_url,
                         package.current_version_altered,
@@ -277,14 +277,6 @@ class PackageHandler:
                         arch_package_name,
                         "major",
                         package.new_version_altered,
-                    )
-
-                    if package_changelog_temp:
-                        package_changelog += package_changelog_temp
-
-                case url if "gitlab.com" in url:
-                    package_changelog_temp = self.get_gitlab_changelog(
-                        package_upstream_url, package.current_main, package.new_main
                     )
 
                     if package_changelog_temp:
