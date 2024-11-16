@@ -1143,18 +1143,3 @@ class PackageHandler:
             return intermediate_tags
         else:
             return None
-
-    def get_gitlab_changelog(
-        self, url: str, current_tag: str, new_tag: str
-    ) -> List[Tuple[str, str]]:
-        self.logger.info("Checking Gitlab changelog")
-
-        # TODO: This function still lacks functionality
-        # Check if Arch versions are the same as the tags on Gitlab
-        package_tags = self.get_package_tags(url + "/-/tags")
-        if package_tags:
-            self.logger.info("TODO")
-        else:
-            self.logger.info(f"No package tags on: {url + '/-/tags'} found")
-
-        return None
