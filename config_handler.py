@@ -86,6 +86,8 @@ class ConfigHandler:
         versions_dict = {}
 
         if package_changelog:
+            major_changelog_found = False
+
             for (
                 changelog_message,
                 package_url,
@@ -108,6 +110,20 @@ class ConfigHandler:
                         versions_dict[package_tag]["changelog"][
                             "changelog origin package"
                         ].append("- Not applicable, minor release -")
+
+                    if release_type != "minor" and not major_changelog_found:
+                        major_exists = any(
+                            release_type_check == "major"
+                            for _, _, _, _, release_type_check in package_changelog
+                        )
+
+                        if not major_exists:
+                            versions_dict[package_tag]["changelog"][
+                                "changelog origin package"
+                            ].append(
+                                "- ERROR: Couldn't find origin changelog. Check the logs for further information -"
+                            )
+                            major_changelog_found = True
 
                 if (
                     arch_package_name == package.package_name

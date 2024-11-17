@@ -1,3 +1,11 @@
+# 1.0.4 ()
+
+### Features and enhancements
+
+- **Changelog** Added error message when no major origin package changelog was found
+
+### Bug fixes
+
 # 1.0.3 (2024-11-16)
 
 ### Features and enhancements
