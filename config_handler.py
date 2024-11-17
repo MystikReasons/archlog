@@ -72,12 +72,15 @@ class ConfigHandler:
                 try:
                     existing_data = json.load(json_read_file)
                 except json.JSONDecodeError:
-                    existing_data = {}
+                    existing_data = {"packages": [], "changelog": {}}
         else:
-            existing_data = {}
+            existing_data = {"packages": [], "changelog": {}}
 
-        if package.package_name not in existing_data:
-            existing_data[package.package_name] = {
+        if package.package_name not in existing_data["packages"]:
+            existing_data["packages"].append(package.package_name)
+
+        if package.package_name not in existing_data["changelog"]:
+            existing_data["changelog"][package.package_name] = {
                 "current version": package.current_version,
                 "new version": package.new_version,
                 "versions": [],
@@ -151,7 +154,7 @@ class ConfigHandler:
             }
 
         for versionTag, changelog_data in versions_dict.items():
-            existing_data[package.package_name]["versions"].append(
+            existing_data["changelog"][package.package_name]["versions"].append(
                 {
                     "version-tag": versionTag,
                     "release-type": changelog_data["release-type"],

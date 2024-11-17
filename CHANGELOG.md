@@ -3,6 +3,7 @@
 ### Features and enhancements
 
 - **Changelog** Added error message when no major origin package changelog was found
+- **Changelog** Added package list in changelog output
 
 ### Bug fixes
 
