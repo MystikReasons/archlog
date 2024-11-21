@@ -22,6 +22,7 @@ def main():
     max_package_new_version = max(
         len(package.new_version) for package in packages_to_update
     )
+    max_package_count = len(str(len(packages_to_update)))
 
     if packages_to_update is None:
         logger.info("No packages to upgrade")
@@ -29,15 +30,56 @@ def main():
 
     logger.info(f"Upgradable packages ({len(packages_to_update)}):")
     logger.info("--------------------")
-    for package in packages_to_update:
+    for index, package in enumerate(packages_to_update, start=1):
         logger.info(
+            f"[{str(index).ljust(max_package_count)}] "
             f"{package.package_name.ljust(max_package_name_length)} "
             f"{package.current_version.ljust(max_package_current_version)} -> "
             f"{package.new_version.ljust(max_package_new_version)}"
         )
     logger.info("--------------------")
 
-    for package in packages_to_update:
+    logger.info("Choose package(s) from which to check for the changelog")
+
+    valid_input = False
+    while not valid_input:
+        chosen_packages = input(
+            "Enter package indices (comma separated), or 0 to select all: "
+        )
+
+        if chosen_packages == "0":
+            selected_packages = packages_to_update
+            valid_input = True
+        else:
+            selected_indices = []
+            for index in chosen_packages.split(","):
+                index = index.strip()
+                if index.isdigit():
+                    index = int(index) - 1
+                    if 0 <= index < len(packages_to_update):
+                        selected_indices.append(index)
+                else:
+                    selected_indices = []
+                    break
+
+            if selected_indices:
+                selected_packages = [
+                    packages_to_update[index] for index in selected_indices
+                ]
+                valid_input = True
+            else:
+                logger.info("Invalid input. Please enter valid package indices.")
+
+    if selected_packages and chosen_packages != "0":
+        logger.info("Selected packages for changelog check:")
+        for package in selected_packages:
+            logger.info(
+                f"{package.package_name} {package.current_version} -> {package.new_version}"
+            )
+
+    logger.info("--------------------")
+
+    for package in selected_packages:
         logger.info(
             f"{package.package_name} {package.current_version} -> {package.new_version}"
         )

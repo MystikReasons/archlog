@@ -4,6 +4,7 @@
 
 - **Changelog** Added error message when no major origin package changelog was found
 - **Changelog** Added package list in changelog output
+- **Menu** Added a package changelog selection menu to check either single, multiple or all packages
 
 ### Bug fixes
 
