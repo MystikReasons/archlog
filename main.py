@@ -10,7 +10,7 @@ def main():
 
     logger.info("Package Changelog Viewer")
     logger.info("------------------------")
-    logger.info("Logger is set up")
+    logger.debug("Logger is set up")
 
     packages_to_update = package_handler.get_upgradable_packages()
     max_package_name_length = max(
