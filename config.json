@@ -1,5 +1,6 @@
 {
-    "program-version": "0.1",
+    "program-version": "1.0.3",
+    "architecture-wording": "Architecture",
     "arch-repositories":
     [
         {"name": "extra", "enabled": true},
