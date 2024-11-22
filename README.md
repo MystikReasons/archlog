@@ -90,3 +90,9 @@ This script does currently only work with offical Arch packages, Flatpack, AUR e
 If no /docs folder is available use the following command `sudo docker run -it --rm -v $(pwd)/docs:/docs sphinxdoc/sphinx sphinx-quickstart`
 
 Once that is available, you can for example generate a .html file with `sudo docker run --rm -v $(pwd)/docs:/docs sphinxdoc/sphinx make html`
+
+## Support
+
+If you enjoy this project and would like to support its development, feel free to donate! Your support means a lot. 🙏
+
+- [Donate via PayPal](https://paypal.me/MystikReasons)
