@@ -9,6 +9,7 @@
 ### Bug fixes
 
 - **Package Handler** Removed unused variable
+- **Package Handler** Fix: Call to non existent variable in get_package_architecture
 
 # 1.0.3 (2024-11-16)
 

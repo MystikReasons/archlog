@@ -686,7 +686,7 @@ class PackageHandler:
                 f"ERROR: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
             )
             self.logger.error("Standard Error:")
-            self.logger.error(e.stderr)
+            self.logger.error(ex.stderr)
             exit(1)
         except PermissionError:
             self.logger.error(
