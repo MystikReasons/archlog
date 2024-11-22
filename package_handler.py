@@ -698,6 +698,7 @@ class PackageHandler:
             exit(1)
 
         output = result.stdout.splitlines()
+        package_architecture = None
 
         for line in output:
             if line.startswith(self.config.config.get("architecture-wording")):
@@ -707,7 +708,9 @@ class PackageHandler:
 
         if not package_architecture:
             self.logger.error(
-                "ERROR: Could not find package architecture in the output. Is the system language something else than English?"
+                "ERROR: Couldn't find package architecture in the output. If the system language is not English, "
+                "change the value of `architecture-wording` in the config file with the correct architecture "
+                "name which you can find with the command `sudo pacman -Q --info PACKAGE`"
             )
             return None
 

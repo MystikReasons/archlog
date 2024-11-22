@@ -11,6 +11,7 @@
 
 - **Package Handler** Removed unused variable
 - **Package Handler** Fix: Call to non existent variable in get_package_architecture
+- **Package Handler** Fix: NameError for 'package_architecture' when no matching line is found in the output
 
 # 1.0.3 (2024-11-16)
 
