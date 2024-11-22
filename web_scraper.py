@@ -1,15 +1,17 @@
+from typing import Optional, Dict, Any
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError
 from bs4 import BeautifulSoup
 
 
 class WebScraper:
-    def __init__(self, logger):
+    def __init__(self, logger, config: Optional[Dict[str, Any]]) -> None:
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=True)
         self.logger = logger
+        self.config = config
 
-    def fetch_page_content(self, url, retries=3, delay=5000):
+    def fetch_page_content(self, url, retries=3):
         attempt = 0
         while attempt < retries:
             try:
@@ -32,7 +34,9 @@ class WebScraper:
                 attempt += 1
                 if attempt < retries:
                     if page:
-                        page.wait_for_timeout(delay)
+                        page.wait_for_timeout(
+                            self.config.config.get("webscraper-delay")
+                        )
                         page.close()
                 else:
                     page.close()

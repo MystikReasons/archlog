@@ -22,7 +22,7 @@ class PackageHandler:
         """
         self.logger = logger
         self.config = config
-        self.web_scraper = WebScraper(self.logger)
+        self.web_scraper = WebScraper(self.logger, self.config)
         self.enabled_repositories = []
         self.PackageInfo = namedtuple(
             "PackageInfo",

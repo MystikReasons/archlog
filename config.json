@@ -1,6 +1,6 @@
 {
     "program-version": "1.0.3",
-    "architecture-wording": "Architecture",
+    "webscraper-delay": 5000,
     "arch-repositories":
     [
         {"name": "extra", "enabled": true},
