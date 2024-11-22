@@ -61,7 +61,7 @@ class PackageHandler:
         """
         try:
             # Update the local mirror
-            update_process = subprocess.run(
+            subprocess.run(
                 ["sudo", "pacman", "-Sy"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -70,7 +70,7 @@ class PackageHandler:
             )
 
             # Get the list of upgradable packages
-            process = subprocess.run(
+            update_process = subprocess.run(
                 ["sudo", "pacman", "-Qu"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -78,7 +78,7 @@ class PackageHandler:
                 check=True,  # This will raise an exception if the command fails
             )
 
-            packages_to_update = process.stdout.splitlines()
+            packages_to_update = update_process.stdout.splitlines()
             packages_to_update = self.split_package_information(packages_to_update)
             return packages_to_update
         except subprocess.CalledProcessError as ex:

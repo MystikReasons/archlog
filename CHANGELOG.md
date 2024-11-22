@@ -8,6 +8,8 @@
 
 ### Bug fixes
 
+- **Package Handler** Removed unused variable
+
 # 1.0.3 (2024-11-16)
 
 ### Features and enhancements
