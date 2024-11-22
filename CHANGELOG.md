@@ -13,6 +13,7 @@
 - **Package Handler** Removed unused variable
 - **Package Handler** Fix: Call to non existent variable in get_package_architecture
 - **Package Handler** Fix: NameError for 'package_architecture' when no matching line is found in the output
+- **Changelog** Fix: If a changelog file from today already exists, delete it
 
 # 1.0.3 (2024-11-16)
 

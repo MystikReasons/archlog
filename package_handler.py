@@ -45,6 +45,9 @@ class PackageHandler:
             if repository.get("enabled"):
                 self.enabled_repositories.append(repository.get("name"))
 
+        # Ensures that if already a changelog file from today exists, delete it
+        self.config.initialize_changelog_file()
+
     def get_upgradable_packages(self) -> List[str]:
         """
         This function gets via `pacman` all the upgradable packages on the local system.

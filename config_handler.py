@@ -62,6 +62,12 @@ class ConfigHandler:
             return None
         return config
 
+    def initialize_changelog_file(self):
+        changelog_filename = self.changelog_path + self.dt_string_changelog
+
+        if os.path.exists(changelog_filename):
+            os.remove(changelog_filename)
+
     def write_changelog(
         self, package, package_changelog: List[Tuple[str, str, str, str, str]]
     ):
