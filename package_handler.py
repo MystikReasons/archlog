@@ -8,17 +8,17 @@ import requests
 
 
 class PackageHandler:
-    def __init__(self, logger, config: Optional[Dict[str, Any]]) -> None:
-        """
-        Initializes an instance of the class with the necessary configuration and logger.
-        Sets up the web scraper, logger, and loads the enabled repositories from the configuration.
+    """Initializes an instance of the class with the necessary configuration and logger.
+    Sets up the web scraper, logger, and loads the enabled repositories from the configuration.
 
-        :param logger: Logger object for logging messages.
-        :type logger: Logger
-        :param config: Configuration object containing all required settings.
-        :type config: Config
-        :raises KeyError: If the configuration lacks 'arch-repositories'.
-        :raises TypeError: If `logger` or `config` are not of the expected object types.
+    :param logger: Logger object for logging messages.
+    :type logger: Logger
+    :param config: Configuration object containing all required settings.
+    :type config: Config
+    """
+
+    def __init__(self, logger, config: Optional[Dict[str, Any]]) -> None:
+        """Constructor method
         """
         self.logger = logger
         self.config = config
@@ -48,19 +48,13 @@ class PackageHandler:
         # Ensures that if already a changelog file from today exists, delete it
         self.config.initialize_changelog_file()
 
-    def get_upgradable_packages(self) -> List[str]:
-        """
-        This function gets via `pacman` all the upgradable packages on the local system.
+    def get_upgradable_packages(self) -> Optional[List[str]]:
+        """This function gets via `pacman` all the upgradable packages on the local system.
         It uses first `pacman -Sy` and after that `pacman -Qu`. This will first update the local mirror
         with the server mirror and then print out all upgradable packages.
 
-        :return: A list of upgradable packages with the following structure.
-        :rtype: List[str]
-        :raises subprocess.CalledProcessError: If the `pacman` commands return a non-zero exit status.
-            This includes errors like network issues.
-        :raises PermissionError: If there is a permissions issue when trying to execute `sudo` commands.
-            This could occur if the user does not have the necessary permissions to run `sudo` or the `pacman` commands.
-        :raises Exception: For any other unexpected errors that occur during execution.
+        :return: A list of upgradable package names. Each entry in the list is a string.
+        :rtype: Optional[List[str]]
         """
         try:
             # Update the local mirror
@@ -101,8 +95,7 @@ class PackageHandler:
             return None
 
     def split_package_information(self, packages: List[str]) -> List[namedtuple]:
-        """
-        Splits package information into a list of namedtuples with detailed version information.
+        """Splits package information into a list of namedtuples with detailed version information.
 
         :param packages: A list of strings, where each string contains a package name
                          followed by the current version and new version information.
@@ -162,22 +155,19 @@ class PackageHandler:
         return packages_restructured
 
     def get_package_changelog(
-        self, package: List[namedtuple]
-    ) -> List[Tuple[str, str, str, str, str]]:
-        """
-        Generates a changelog for a specified package by analyzing intermediate, minor, and major releases
+        self, package: namedtuple
+    ) -> Optional[List[Tuple[str, str, str, str, str]]]:
+        """Generates a changelog for a specified package by analyzing intermediate, minor, and major releases
         between its current and new versions. It fetches and compares relevant metadata and tags from
         Arch Linux repositories, as well as upstream sources like GitHub, GitLab, and KDE GitLab.
 
         :param package: A named tuple containing the package information, such as the package name,
                         current version, new version, main version tags, and suffixes.
-        :type package: List[namedtuple]
+        :type package: namedtuple
         :return: A list of tuples containing changelog information for the package. Each tuple provides
                 details on each relevant change from intermediate, major, and minor versions, in the format:
                 (tag, date, version, description, change type).
-        :rtype: List[Tuple[str, str, str, str, str]]
-        :raises ValueError: If the package's repository or architecture information cannot be found.
-        :raises ConnectionError: If there are issues accessing external URLs for repository metadata.
+        :rtype: Optional[List[Tuple[str, str, str, str, str]]]
         """
         package_changelog = []
 
@@ -212,7 +202,7 @@ class PackageHandler:
         if not package_source_files_url:
             return None
 
-        ## TODO: Check if the source files (PKGBUILD, etc.) did receive some updates beside pkver, pkgrel, etc...
+        # TODO: Check if the source files (PKGBUILD, etc.) did receive some updates beside pkver, pkgrel, etc...
         # Always extract the package name from Arch's source control repository.
         # Example: https://gitlab.archlinux.org/archlinux/packaging/packages/nss -> nss
         arch_package_name = (
@@ -720,20 +710,16 @@ class PackageHandler:
         return package_architecture
 
     def get_arch_package_source_url(self, url):
-        """
-        Extracts the source URL from an Arch source webpage (gitlab.archlinux.org) containing package information.
-
+        """Extracts the source URL from an Arch source webpage (gitlab.archlinux.org) containing package information.
         This function sends an HTTP GET request to the specified URL, parses the HTML content
         to find a `<span>` tag containing the source URL of a package. It then extracts and
         returns the source URL. The function specifically looks for the string 'source =' in
         the `<span>` tag text and extracts the URL part before the final segment.
 
-        :param str url: The URL of the webpage to retrieve and parse.
+        :param url: The URL of the webpage to retrieve and parse.
+        :type url: str
         :return: The extracted source URL if found, otherwise None.
-        :rtype: str
-        :raises requests.RequestException: If an error occurs during the HTTP request.
-            This includes network errors, invalid URLs, or issues with the request itself.
-        :raises Exception: For any other unexpected errors that occur during HTML parsing or URL extraction.
+        :rtype: Optional[str]
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
@@ -775,20 +761,16 @@ class PackageHandler:
             return None
 
     def get_arch_package_source_tag(self, url):
-        """
-        Extracts the source tag from an Arch source webpage (gitlab.archlinux.org) containing package information.
-
+        """Extracts the source tag from an Arch source webpage (gitlab.archlinux.org) containing package information.
         This function sends an HTTP GET request to the specified URL, parses the HTML content
         to find a `<span>` tag containing the source URL of a package. It then extracts and
         returns the source URL. The function specifically looks for the string 'source =' in
         the `<span>` tag text and extracts the URL part before the final segment.
 
-        :param str url: The URL of the webpage to retrieve and parse.
+        :param url: The URL of the webpage to retrieve and parse.
+        :type param: str
         :return: The extracted source URL if found, otherwise None.
-        :rtype: str
-        :raises requests.RequestException: If an error occurs during the HTTP request.
-            This includes network errors, invalid URLs, or issues with the request itself.
-        :raises Exception: For any other unexpected errors that occur during HTML parsing or URL extraction.
+        :rtype: Optional[str]
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
@@ -833,20 +815,20 @@ class PackageHandler:
         package_name: str,
         package_architecture: str,
     ) -> str:
-        """
-        Determines the repository from which a specified package can be retrieved.
-
+        """Determines the repository from which a specified package can be retrieved.
         This function checks the availability of the specified package in each of the enabled repositories.
         It constructs URLs for each repository based on the package name and architecture, and verifies
-        their reachability. If multiple repositories are found to be reachable, an error is logged, as the
-        user should configure either stable or testing repositories exclusively.
+        their reachability. If multiple repositories are found to be reachable, an error is logged, and the
+        program exits, as the user should configure either stable or testing repositories exclusively.
 
-        :param List[str] enabled_repositories: A list of enabled repository names to check (from config file).
-        :param str package_name: The name of the package to check.
-        :param str package_architecture: The architecture of the package (e.g., 'x86_64').
-        :return: The name of the reachable repository if exactly one is found; otherwise, an error is logged and the program exits.
+        :param enabled_repositories: A list of enabled repository names to check (from config file).
+        :type enabled_repositories: List[str]
+        :param package_name: The name of the package to check.
+        :type package_name: str
+        :param package_architecture: The architecture of the package (e.g., 'x86_64').
+        :type package_architecture: str
+        :return: The name of the reachable repository if exactly one is found.
         :rtype: str
-        :raises Exception: If multiple reachable repositories are found, indicating a configuration issue.
         """
         reachable_repository = []
         for repository in enabled_repositories:
@@ -875,17 +857,13 @@ class PackageHandler:
             return reachable_repository
 
     def get_package_upstream_url(self, url: str) -> Optional[str]:
-        """
-        Retrieves the upstream URL for a package from a specified Arch Linux package page.
+        """Retrieves the upstream URL for a package from a specified Arch Linux package page.
 
         :param url: The URL of the Arch Linux package page to scrape for the upstream URL.
         :type url: str
         :return: The upstream URL as a string if found, or None if the URL is not available or
                 if the node 'Upstream URL:' cannot be located.
         :rtype: Optional[str]
-        :raises ConnectionError: If there is an issue fetching the page content.
-        :raises AttributeError: If there is an unexpected structure on the page that prevents
-                                accessing the upstream URL node.
         """
         response = self.web_scraper.fetch_page_content(url)
         if response is None:
@@ -903,19 +881,15 @@ class PackageHandler:
             return None
 
     def get_package_source_files_url(self, url: str) -> Optional[str]:
-        """
-        Retrieves the URL for the source files of a package from a webpage.
-
+        """Retrieves the URL for the source files of a package from a webpage.
         This function sends an HTTP GET request to the specified URL, parses the HTML content to find a link with the
         text 'Source Files', and returns the URL of that link. If the 'Source Files' link is not found, the function
         returns `None`.
 
-        :param str url: The URL of the webpage to retrieve and parse.
+        :param url: The URL of the webpage to retrieve and parse.
+        :type url: str
         :return: The URL of the 'Source Files' link if found, or `None` if the link is not found.
         :rtype: Optional[str]
-        :raises requests.RequestException: If an error occurs during the HTTP request.
-            This includes network errors, invalid URLs, or issues with the request itself.
-        :raises Exception: For any other unexpected errors that occur during HTML parsing.
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
@@ -945,21 +919,17 @@ class PackageHandler:
             return None
 
     def get_package_tags(self, url: str) -> List[Tuple[str, str]]:
-        """
-        Retrieves release tags and their associated timestamps from a source code hosting website.
-
+        """Retrieves release tags and their associated timestamps from a source code hosting website.
         This function sends an HTTP GET request to the specified URL, parses the HTML content to find
         SVG elements representing tags and their corresponding timestamps. It then returns a list of tuples
         where each tuple contains a release tag and its associated timestamp. The function also transforms
         tags with a version prefix of '1:' to '1-' for compatibility with repository host formats.
 
-        :param str url: The URL of the webpage to retrieve and parse.
+        :param url: The URL of the webpage to retrieve and parse.
+        :type url: str
         :return: A list of tuples where each tuple contains a release tag and its associated timestamp.
                  If an error occurs during the request or parsing, or if no relevant data is found, an empty list is returned.
         :rtype: List[Tuple[str, str]]
-        :raises requests.RequestException: If an error occurs during the HTTP request.
-            This includes network errors, invalid URLs, or issues with the request itself.
-        :raises Exception: For any other unexpected errors that occur during HTML parsing.
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
@@ -1013,26 +983,27 @@ class PackageHandler:
         release_type: str,
         arch_new_tag: Optional[str] = None,
     ) -> List[Tuple[str, str, str, str, str]]:
-        """
-        Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
-
+        """Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
         This function constructs a URL to compare the two specified tags in a Git repository, retrieves
         the comparison page, and parses it to extract commit messages and their corresponding URLs.
         The function returns a list of tuples where each tuple contains a commit message and its full URL.
 
-        :param str source: The base URL of the Git repository.
-        :param str current_tag: The tag to compare from.
-        :param str new_tag: The tag to compare to.
-        :param str package_name: The currently checked package name.
-        :param str release_type: minor, major or arch.
-        :param Optional[str] override_shown_tag: This is only for major releases since the Arch package tag
+        :param source: The base URL of the Git repository.
+        :type source: str
+        :param current_tag: The tag to compare from.
+        :type current_tag: str
+        :param new_tag: The tag to compare to.
+        :type new_tag: str
+        :param package_name: The currently checked package name.
+        :type package_name: str
+        :param release_type: minor, major or arch.
+        :type release_type: str
+        :param override_shown_tag: This is only for major releases since the Arch package tag
                and the origin package tag can differentiate (optional, defaults to None). It is also needed
                for intermediate releases when checking the Arch package.
+        :type override_shown_tag: Optional[str]
         :return: A list of tuples where each tuple contains a commit message, its full URL and the version tag.
         :rtype: List[Tuple[str, str, str, str, str]]
-        :raises requests.RequestException: If an error occurs during the HTTP request.
-            This includes network errors, invalid URLs, or issues with the request itself.
-        :raises Exception: For any other unexpected errors that occur during HTML parsing.
         """
         compare_tags_url = (
             f"{source}/compare/{current_tag}...{new_tag}"
@@ -1079,14 +1050,13 @@ class PackageHandler:
             return None
 
     def check_website_availabilty(self, url: str) -> bool:
-        """
-        Checks the availability of a website by sending an HTTP GET request.
-
+        """Checks the availability of a website by sending an HTTP GET request.
         This function sends a GET request to the specified URL and checks the HTTP status code of the response.
         If the status code is 200, it indicates that the website is reachable. Any other status code indicates
         that the website may be down or returning an error.
 
-        :param str url: The URL of the website to check.
+        :param url: The URL of the website to check.
+        :type url: str
         :return: True if the website is reachable (status code 200), otherwise False.
         :rtype: bool
         :raises requests.RequestException: If an error occurs during the HTTP request.
@@ -1108,10 +1078,8 @@ class PackageHandler:
             )
             return False
 
-    def find_intermediate_tags(self, package_tags, current_tag: str, new_tag: str):
-        """
-        Finds and returns intermediate tags between the current and new version tags for a package.
-
+    def find_intermediate_tags(self, package_tags, current_tag: str, new_tag: str) -> Optional[List[Tuple[str, str]]]:
+        """Finds and returns intermediate tags between the current and new version tags for a package.
         This method looks for tags between the current and new versions within a list of package tags.
         It ensures that intermediate versions are correctly identified, reversed if necessary, and returned
         for further processing.
@@ -1125,7 +1093,6 @@ class PackageHandler:
         :return: A list of intermediate tags between the current and new versions, or None if no intermediate
                 tags are found.
         :rtype: Optional[List[Tuple[str, str]]]
-        :raises ValueError: If neither the current_tag nor the new_tag is found in the package_tags.
         """
         start_index = end_index = None
 
