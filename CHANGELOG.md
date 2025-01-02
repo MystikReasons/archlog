@@ -1,3 +1,11 @@
+# 1.0.5 ()
+
+### Features and enhancements
+
+- **Web Scraper** Reduced webscraper delay from 5 seconds to 3 seconds
+
+### Bug fixes
+
 # 1.0.4 (2025-01-02)
 
 ### Features and enhancements
