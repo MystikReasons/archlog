@@ -83,7 +83,9 @@ This script does currently only work with offical Arch packages, Flatpack, AUR e
 ## Installation
 - Clone or fork the repository
 - Only once: in the project folder run `pip install -r requirements.txt`
-    - If the environment is externally managed (default behaviour in Arch Linux) you need to install and enable the python virtual environment before running this command
+    - If the environment is externally managed (default behaviour in Arch Linux) you need to install and enable the python virtual environment before running this command.
+        - Installation: `python -m venv venv/`
+        - Enabling the virtual environment: `source venv/bin/activate`
 - Run the program with `python main.py`
 
 ## Build documentation with Sphinx

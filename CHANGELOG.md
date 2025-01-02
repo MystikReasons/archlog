@@ -1,4 +1,4 @@
-# 1.0.4 ()
+# 1.0.4 (2025-01-02)
 
 ### Features and enhancements
 
@@ -7,6 +7,7 @@
 - **Menu** Added a package changelog selection menu to check either single, multiple or all packages
 - **Config** Added the option to change the package architecture dependent word in the config instead of in the code
 - **Config** Added the option to change the delay for the web scraping in the config instead of in the code
+- **README** Updated README
 
 ### Bug fixes
 
