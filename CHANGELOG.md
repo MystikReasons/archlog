@@ -14,6 +14,7 @@
 - **Package Handler** Fix: Call to non existent variable in get_package_architecture
 - **Package Handler** Fix: NameError for 'package_architecture' when no matching line is found in the output
 - **Changelog** Fix: If a changelog file from today already exists, delete it
+- **External package** Fix: Updated needed playwright version due to a build error with greenlet
 
 # 1.0.3 (2024-11-16)
 
