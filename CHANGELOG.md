@@ -7,6 +7,8 @@
 
 ### Bug fixes
 
+- **Package Handler** Fix: Trailing slash handling for compare tags URLs
+
 # 1.0.4 (2025-01-02)
 
 ### Features and enhancements

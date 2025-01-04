@@ -1013,9 +1013,9 @@ class PackageHandler:
         :rtype: List[Tuple[str, str, str, str, str]]
         """
         compare_tags_url = (
-            f"{source}/compare/{current_tag}...{new_tag}"
+            f"{source.rstrip('/')}/compare/{current_tag}...{new_tag}"
             if "github" in source
-            else f"{source}/-/compare/{current_tag}...{new_tag}"
+            else f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
         )
 
         self.logger.debug(f"Compare tags URL: {compare_tags_url}")
