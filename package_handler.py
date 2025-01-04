@@ -1025,11 +1025,16 @@ class PackageHandler:
         if not response:
             return None
 
-        kwargs = "Link--primary" if "github" in source else "commit-row-message"
-
         # TODO: If the source hosting site is Github which can display commits only on multiple pages, how
         #       should we handle that?
-        commits = self.web_scraper.find_all_elements(response, "a", class_=kwargs)
+        if "github" in source:
+            kwargs = "mb-1"
+            tag = "p"
+        else:
+            tag = "a"
+            kwargs = "commit-row-message"
+
+        commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
 
         if not commits:
             self.logger.debug(

@@ -8,6 +8,7 @@
 ### Bug fixes
 
 - **Package Handler** Fix: Trailing slash handling for compare tags URLs
+- **Package Handler** Fix: Handle find_all_elements for compare tags URL correctly between Github and GitLab
 
 # 1.0.4 (2025-01-02)
 
