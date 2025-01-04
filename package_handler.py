@@ -122,20 +122,27 @@ class PackageHandler:
 
         # Example: automake 1.16.5-2 -> 1.17-1
         for line in packages:
+            replacements = {"1:": "1-", "2:": "2-", "3:": "3-"}
             parts = line.split(" ")
             package_name = parts[0]
             current_version = parts[1]
-            # Some Arch packages do have versions that look like this: 1:1.16.5-2
-            # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
-            # To prevent repetitive code which replaces the symbol, we do it here
-            current_version_altered = current_version.replace("1:", "1-")
             new_version = parts[3]
-            new_version_altered = new_version.replace("1:", "1-")
             current_main = parts[1].split("-")[0]
-            current_main_altered = current_main.replace("1:", "1-")
             new_main = parts[3].split("-")[0]
             current_suffix = parts[1].split("-")[1]
             new_suffix = parts[3].split("-")[1]
+
+            new_version_altered = new_version
+            current_version_altered = current_version
+            current_main_altered = current_main
+
+            # Some Arch packages do have versions that look like this: 1:1.16.5-2
+            # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
+            # To prevent repetitive code which replaces the symbol, we do it here
+            for old, new in replacements.items():
+                new_version_altered = new_version_altered.replace(old, new)
+                current_version_altered = current_version_altered.replace(old, new)
+                current_main_altered = current_main_altered.replace(old, new)
 
             packages_restructured.append(
                 self.PackageInfo(

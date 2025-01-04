@@ -3,6 +3,7 @@
 ### Features and enhancements
 
 - **Web Scraper** Reduced webscraper delay from 5 seconds to 3 seconds
+- **Package Handler** Added further replacement values for Arch Gitlab packages (example gjs)
 
 ### Bug fixes
 
