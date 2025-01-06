@@ -5,6 +5,7 @@ from web_scraper import WebScraper
 import re
 import subprocess
 import requests
+from difflib import get_close_matches
 
 
 class PackageHandler:
@@ -935,33 +936,52 @@ class PackageHandler:
         :param url: The URL of the webpage to retrieve and parse.
         :type url: str
         :return: A list of tuples where each tuple contains a release tag and its associated timestamp.
-                 If an error occurs during the request or parsing, or if no relevant data is found, an empty list is returned.
+                 The timestamp has the format: 2024-12-30T19:45:26Z
+                 If an error occurs during the request or parsing, or if no relevant data is found, None is returned.
         :rtype: List[Tuple[str, str]]
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
-
             if not response:
                 return None
 
-            svg = self.web_scraper.find_all_elements(
-                response, "svg", attrs={"data-testid": "tag-icon"}
-            )
+            if "github" in url:
+                # TODO: Currently it does not search for further tags if the Github page has a "Next" button.
+                release_tags_raw = self.web_scraper.find_all_elements(
+                    response, "a", class_="Link--primary"
+                )
 
-            if not svg:
-                self.logger.debug(f"No package tag found in the response from {url}")
-                return None
+                if not release_tags_raw:
+                    return None
 
-            release_tags = [svg_tag.find_next("a").text for svg_tag in svg]
-            time_tag = self.web_scraper.find_all_elements(response, "time")
-            time_tags = [tag["datetime"] for tag in time_tag]
+                release_tags = [tag.text.strip() for tag in release_tags_raw]
+                time_tags_raw = self.web_scraper.find_all_elements(
+                    response, "relative-time"
+                )
 
+                if not time_tags_raw:
+                    return None
+            else:
+                release_tags_raw = self.web_scraper.find_all_elements(
+                    response, "svg", attrs={"data-testid": "tag-icon"}
+                )
+
+                if not release_tags_raw:
+                    return None
+
+                release_tags = [tag.find_next("a").text for tag in release_tags_raw]
+                time_tags_raw = self.web_scraper.find_all_elements(response, "time")
+
+                if not time_tags_raw:
+                    return None
+
+            time_tags = [tag["datetime"] for tag in time_tags_raw]
             combined_info = list(zip(release_tags, time_tags))
 
             for index, (release, time) in enumerate(combined_info):
                 # Some Arch packages do have versions that look like this: 1:1.16.5-2
-                # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
-                # In order to make a tag compare on Gitlab, transform '1:' to '1-'
+                # On their repository host (GitLab) the tags do like this: 1-1.16.5-2
+                # In order to make a tag compare on GitLab, transform '1:' to '1-'
                 transformed_release = release.replace("1:", "1-")
                 self.logger.debug(
                     f"Release tag: {transformed_release} Time tag: {time}"
@@ -988,7 +1008,7 @@ class PackageHandler:
         new_tag: str,
         package_name: str,
         release_type: str,
-        arch_new_tag: Optional[str] = None,
+        override_shown_tag: Optional[str] = None,
     ) -> List[Tuple[str, str, str, str, str]]:
         """Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
         This function constructs a URL to compare the two specified tags in a Git repository, retrieves
@@ -1012,17 +1032,69 @@ class PackageHandler:
         :return: A list of tuples where each tuple contains a commit message, its full URL and the version tag.
         :rtype: List[Tuple[str, str, str, str, str]]
         """
-        compare_tags_url = (
-            f"{source.rstrip('/')}/compare/{current_tag}...{new_tag}"
-            if "github" in source
-            else f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
-        )
+        compare_tags_url = None
+
+        if "major" in release_type:
+            upstream_package_tags = (
+                self.get_package_tags(source.rstrip("/") + "/tags")
+                if "github" in source
+                else self.get_package_tags(source.rstrip("/") + "/-/tags")
+            )
+
+            if upstream_package_tags:
+                # Check if the current_tag and the new_tag/override_shown_tag are not in the upstream package tags
+                # If not, find the closest one to use
+                tag_versions = [tag[0] for tag in upstream_package_tags]
+
+                if current_tag not in upstream_package_tags:
+                    closest_match_current_tag = get_close_matches(
+                        current_tag, tag_versions, n=1, cutoff=0.6
+                    )
+
+                    if closest_match_current_tag:
+                        self.logger.debug(
+                            f"Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag[0]}"
+                        )
+                    else:
+                        self.logger.debug(
+                            f"No similar tag for {current_tag} found in the upstream package repository"
+                        )
+
+                if new_tag or override_shown_tag not in upstream_package_tags:
+                    new_tag_to_check = override_shown_tag or new_tag
+                    closest_match_new_tag = get_close_matches(
+                        new_tag_to_check, tag_versions, n=1, cutoff=0.6
+                    )
+
+                    if closest_match_new_tag:
+                        self.logger.debug(
+                            f"Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag[0]}"
+                        )
+                    else:
+                        self.logger.debug(
+                            f"No similar tag for {new_tag_to_check} found in the upstream package repository"
+                        )
+
+                compare_tags_url = (
+                    f"{source.rstrip('/')}/compare/{closest_match_current_tag[0] or current_tag}...{closest_match_new_tag[0] or new_tag}"
+                    if "github" in source
+                    else f"{source.rstrip('/')}/-/compare/{closest_match_current_tag[0] or current_tag}...{closest_match_new_tag[0] or new_tag}"
+                )
+            else:
+                self.logger.debug(f"No upstream package tags found for {source}")
+
+        if not compare_tags_url:
+            compare_tags_url = (
+                f"{source.rstrip('/')}/compare/{current_tag}...{new_tag}"
+                if "github" in source
+                else f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
+            )
 
         self.logger.debug(f"Compare tags URL: {compare_tags_url}")
 
         response = self.web_scraper.fetch_page_content(compare_tags_url)
-
         if not response:
+            self.logger.debug(f"No response received from {compare_tags_url}")
             return None
 
         # TODO: If the source hosting site is Github which can display commits only on multiple pages, how
@@ -1031,8 +1103,8 @@ class PackageHandler:
             kwargs = "mb-1"
             tag = "p"
         else:
-            tag = "a"
             kwargs = "commit-row-message"
+            tag = "a"
 
         commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
 
@@ -1043,8 +1115,13 @@ class PackageHandler:
             return None
 
         commit_messages = [commit.get_text(strip=True) for commit in commits]
-        commit_urls = [urljoin(source, commit.get("href")) for commit in commits]
-        version_tags = [arch_new_tag if arch_new_tag else new_tag] * len(
+        if "github" in source:
+            commit_urls = [
+                urljoin(source, commit.find("a")["href"]) for commit in commits
+            ]
+        else:
+            commit_urls = [urljoin(source, commit.get("href")) for commit in commits]
+        version_tags = [override_shown_tag if override_shown_tag else new_tag] * len(
             commit_messages
         )
         package_names = [package_name] * len(commit_messages)
