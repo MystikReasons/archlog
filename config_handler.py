@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any, List, Tuple
+from typing import Optional, Dict, Any, List, Tuple, NamedTuple
 import os
 import logging
 import json
@@ -9,6 +9,7 @@ DEFAULT_CONFIG_FILE_NAME = "config.json"
 
 class ConfigHandler:
     def __init__(self, config_path=DEFAULT_CONFIG_FILE_NAME) -> None:
+        """Constructor method"""
         self.dir_path = os.path.dirname(os.path.abspath(__file__))
         self.config_path = os.path.join(self.dir_path, config_path)
         self.config = self.load_config()
@@ -27,7 +28,18 @@ class ConfigHandler:
 
         self.setup_logging()
 
-    def setup_logging(self):
+    def setup_logging(self) -> None:
+        """
+        Sets up logging for the application by configuring file and console handlers.
+
+        The function initializes logging to a file and outputs logs to the console. 
+        Handles potential errors during the setup, such as file access issues.
+
+        :raises FileNotFoundError: If the log file path is invalid or cannot be found.
+        :raises PermissionError: If there are insufficient permissions to create or write to the log file.
+        :raises Exception: For any other errors encountered during logger setup.
+        :return: None
+        """
         try:
             logging.basicConfig(
                 filename=self.logs_path + self.dt_string_logging,
@@ -36,7 +48,7 @@ class ConfigHandler:
             )
         except (FileNotFoundError, PermissionError) as ex:
             print(f"Error setting up log file: {ex}")
-            return
+            return None
 
         try:
             self.logger = logging.getLogger()
@@ -51,9 +63,16 @@ class ConfigHandler:
             self.logger.addHandler(stream)
         except Exception as ex:
             print(f"Error setting up logger: {ex}")
-            return
+            return None
 
     def load_config(self) -> Optional[Dict[str, Any]]:
+        """
+        Loads the configuration from a JSON file.
+
+        :raises FileNotFoundError: If the configuration file does not exist, logs an error and returns None.
+        :return: The loaded configuration as a dictionary, or None if the file is not found.
+        :rtype: Optional[Dict[str, Any]]
+        """
         try:
             with open(self.config_path, "r") as read_config_file:
                 config = json.load(read_config_file)
@@ -63,14 +82,33 @@ class ConfigHandler:
         return config
 
     def initialize_changelog_file(self):
+        """
+        Initializes the changelog file by removing any existing file with the same name.
+        """
         changelog_filename = self.changelog_path + self.dt_string_changelog
 
         if os.path.exists(changelog_filename):
             os.remove(changelog_filename)
 
     def write_changelog(
-        self, package, package_changelog: List[Tuple[str, str, str, str, str]]
-    ):
+        self,
+        package: List[NamedTuple],
+        package_changelog: List[Tuple[str, str, str, str, str]],
+    ) -> None:
+        """Writes changelog data for a specific package to a JSON file.
+
+        :param package: An object containing information about the package. It should at least have
+                the attributes `package_name`, `current_version`, and `new_version`.
+        :type package: List[NamedTuple]
+        :param package_changelog: A list of changelog data entries. Each tuple consists of:
+                                - changelog_message (str): The commit message.
+                                - package_url (str): The URL of the commit.
+                                - package_tag (str): The version tag.
+                                - arch_package_name (str): The name of the Arch package.
+                                - release_type (str): The type of release (e.g., "minor", "major", "arch").
+        :type package_changelog: List[Tuple[str, str, str, str, str]]
+        :return: None
+        """
         changelog_filename = self.changelog_path + self.dt_string_changelog
 
         if os.path.exists(changelog_filename):
