@@ -19,8 +19,7 @@ class PackageHandler:
     """
 
     def __init__(self, logger, config: Optional[Dict[str, Any]]) -> None:
-        """Constructor method
-        """
+        """Constructor method"""
         self.logger = logger
         self.config = config
         self.web_scraper = WebScraper(self.logger, self.config)
@@ -54,6 +53,10 @@ class PackageHandler:
         It uses first `pacman -Sy` and after that `pacman -Qu`. This will first update the local mirror
         with the server mirror and then print out all upgradable packages.
 
+        :raises subprocess.CalledProcessError: If the command returns a non-zero exit status.
+        :raises PermissionError: If the command cannot be executed due to insufficient permissions.
+        :raises Exception: For any unexpected errors.
+        :raises SystemExit: Always called if any exception is encountered, terminating the program.
         :return: A list of upgradable package names. Each entry in the list is a string.
         :rtype: Optional[List[str]]
         """
@@ -85,15 +88,15 @@ class PackageHandler:
             )
             self.logger.error("Standard Error:")
             self.logger.error(ex.stderr)
-            return None
+            exit()
         except PermissionError:
             self.logger.error(
                 "ERROR: Permission denied. Are you sure you have the necessary permissions to run this command?"
             )
-            return None
+            exit()
         except Exception as ex:
             self.logger.error(f"ERROR: An unexpected error occurred: {ex}")
-            return None
+            exit()
 
     def split_package_information(self, packages: List[str]) -> List[namedtuple]:
         """Splits package information into a list of namedtuples with detailed version information.
