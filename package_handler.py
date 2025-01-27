@@ -398,14 +398,15 @@ class PackageHandler:
                     if first_source_url != second_source_url:
                         return package_changelog if package_changelog else None
 
-                    if (
-                        not first_source_url
-                        or not second_source_url
-                        and not first_source_tag
-                        or not second_source_tag
+                    if all(
+                        x is not None
+                        for x in [
+                            first_source_url,
+                            second_source_url,
+                            first_source_tag,
+                            second_source_tag,
+                        ]
                     ):
-                        return package_changelog if package_changelog else None
-                    else:
                         package_changelog_temp = (
                             self.get_changelog_compare_package_tags(
                                 first_source_url,
@@ -419,6 +420,8 @@ class PackageHandler:
 
                         if package_changelog_temp:
                             package_changelog += package_changelog_temp
+                    else:
+                        return package_changelog if package_changelog else None
 
         # Check if there was a minor release
         # Example: 1.16.5-2 -> 1.16.5-3
@@ -554,14 +557,15 @@ class PackageHandler:
                 if first_source_url != second_source_url:
                     continue
 
-                if (
-                    not first_source_url
-                    or not second_source_url
-                    and not first_source_tag
-                    or not second_source_tag
+                if all(
+                    x is not None
+                    for x in [
+                        first_source_url,
+                        second_source_url,
+                        first_source_tag,
+                        second_source_tag,
+                    ]
                 ):
-                    continue
-                else:
                     package_changelog_temp = self.get_changelog_compare_package_tags(
                         first_source_url,
                         first_source_tag,
@@ -573,6 +577,8 @@ class PackageHandler:
 
                     if package_changelog_temp:
                         package_changelog += package_changelog_temp
+                else:
+                    continue
 
         # Check if the last intermediate tag is a minor release
         if (
