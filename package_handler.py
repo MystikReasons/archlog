@@ -858,7 +858,7 @@ class PackageHandler:
                 + package_name
             )
 
-            if self.check_website_availabilty(possible_url):
+            if self.web_scraper.check_website_availabilty(possible_url):
                 reachable_repository.append(repository)
 
         # Multiple repositories from Arch do contain the same package.
