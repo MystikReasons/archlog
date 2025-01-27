@@ -2,6 +2,7 @@ from typing import Optional, Dict, Any
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError
 from bs4 import BeautifulSoup
+import requests
 
 
 class WebScraper:
@@ -69,6 +70,35 @@ class WebScraper:
         """
         soup = BeautifulSoup(content, "html.parser")
         return soup.find(tag, **kwargs)
+
+    def check_website_availabilty(self, url: str) -> bool:
+        """Checks the availability of a website by sending an HTTP GET request.
+        This function sends a GET request to the specified URL and checks the HTTP status code of the response.
+        If the status code is 200, it indicates that the website is reachable. Any other status code indicates
+        that the website may be down or returning an error.
+
+        :param url: The URL of the website to check.
+        :type url: str
+        :return: True if the website is reachable (status code 200), otherwise False.
+        :rtype: bool
+        :raises requests.RequestException: If an error occurs during the HTTP request.
+            This includes network errors, invalid URLs, or issues with the request itself.
+        """
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                self.logger.info(f"Website: {url} is reachable")
+                return True
+            else:
+                self.logger.info(
+                    f"Website: {url} returned status code {response.status_code}."
+                )
+                return False
+        except requests.RequestException as ex:
+            self.logger.error(
+                f"ERROR: An error occured during checking availability of website {url}. Error code: {ex}"
+            )
+            return False
 
     def close_browser(self):
         self.browser.close()

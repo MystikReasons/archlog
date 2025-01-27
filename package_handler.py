@@ -4,7 +4,6 @@ from urllib.parse import urljoin, urlparse
 from web_scraper import WebScraper
 import re
 import subprocess
-import requests
 from difflib import get_close_matches
 
 
@@ -287,86 +286,11 @@ class PackageHandler:
                         package_changelog += package_changelog_temp
 
                 case url if "kde.org" in url:
-                    kde_package_categories = [
-                        "plasma",
-                        "framework",
-                        "utilities",
-                        "libraries",
-                    ]
-
-                    # KDE tags look like this: v6.1.3 while Arch uses it like this 1:6.1.3-1
-                    current_version_altered = "v" + package.current_main.replace(
-                        "1:", ""
-                    )
-                    new_version_altered = "v" + package.new_main.replace("1:", "")
-
-                    # The upstream link of KDE packages can look differently
-                    # - https://apps.kde.org/ark/
-                    # - https://community.kde.org/Frameworks
-                    # - https://kde.org/plasma-desktop/
-                    #
-                    # 1. Check if the upstream URL already contains the kde category
-                    #    - Example: https://archlinux.org/packages/extra/x86_64/ark/
-                    # 2. Try to open https://apps.kde.org/... and extract the category from there
-                    #    - Example: https://apps.kde.org/ark/
-                    # 3. Try to extract the category out of the `source = https://...` in .SRCINFO (To be implemented)
-                    #    - Example: https://gitlab.archlinux.org/archlinux/packaging/packages/ark/-/blob/main/.SRCINFO
-                    # 4. Brute force method, go through each KDE category and try if URL is reachable (To be implemented)
-                    #    - Example 1: https://invent.kde.org/frameworks/baloo-widgets
-                    #    - Example 2: https://invent.kde.org/libraries/baloo-widgets
-                    kde_category = next(
-                        (
-                            category
-                            for category in kde_package_categories
-                            if re.search(category, url, re.IGNORECASE)
-                        ),
-                        None,
-                    )
-
-                    if kde_category:
-                        self.logger.debug(f"KDE category: {kde_category}")
-                    else:
-                        kde_category_url = (
-                            "https://apps.kde.org/" + package.package_name
-                        )
-
-                        response = self.web_scraper.fetch_page_content(kde_category_url)
-                        kde_category_raw = self.web_scraper.find_element(
-                            response,
-                            "a",
-                            attrs={"href": re.compile(r"^/categories/.+")},
-                        )
-
-                        if kde_category_raw:
-                            kde_category = kde_category_raw.text.strip()
-                            self.logger.debug(f"KDE category: {kde_category}")
-                        else:
-                            self.logger.error(
-                                f"ERROR: Couldn't extract KDE package category from {kde_category_url}"
-                            )
-                            return package_changelog if package_changelog else None
-
-                    # Differentiate between different KDE package groups (Gitlab)
-                    if "plasma" in kde_category.lower():
-                        base_url = "https://invent.kde.org/plasma/"
-                    elif "framework" in kde_category.lower():
-                        base_url = "https://invent.kde.org/frameworks/"
-                    elif "utilities" in kde_category.lower():
-                        base_url = "https://invent.kde.org/utilities/"
-                    elif "libraries" in kde_category.lower():
-                        base_url = "https://invent.kde.org/libraries"
-                    else:
-                        self.logger.error(
-                            f"ERROR: Unknown KDE Gitlab group in: {kde_category}"
-                        )
-                        return package_changelog if package_changelog else None
-
-                    package_changelog_temp = self.get_changelog_compare_package_tags(
-                        base_url + package.package_name,
-                        current_version_altered,
-                        new_version_altered,
+                    package_changelog_temp = self.get_changelog_kde_package(
+                        url,
+                        package.current_main,
+                        package.new_main,
                         arch_package_name,
-                        "major",
                         package.new_version_altered,
                     )
 
@@ -1084,10 +1008,16 @@ class PackageHandler:
                             f"No similar tag for {new_tag_to_check} found in the upstream package repository"
                         )
 
+                # GitHub compare tags url: https://github.com/user/repo/compare/v1.0.0...v2.0.0
+                # GitLab compare tags url: https://github.com/user/repo/-/compare/v1.0.0...v2.0.0
                 compare_tags_url = (
-                    f"{source.rstrip('/')}/compare/{closest_match_current_tag[0] or current_tag}...{closest_match_new_tag[0] or new_tag}"
+                    f"{source.rstrip('/')}/compare/"
+                    f"{(closest_match_current_tag or [current_tag])[0]}..."
+                    f"{(closest_match_new_tag or [new_tag])[0]}"
                     if "github" in source
-                    else f"{source.rstrip('/')}/-/compare/{closest_match_current_tag[0] or current_tag}...{closest_match_new_tag[0] or new_tag}"
+                    else f"{source.rstrip('/')}/-/compare/"
+                    f"{(closest_match_current_tag or [current_tag])[0]}..."
+                    f"{(closest_match_new_tag or [new_tag])[0]}"
                 )
             else:
                 self.logger.debug(f"No upstream package tags found for {source}")
@@ -1124,12 +1054,14 @@ class PackageHandler:
             return None
 
         commit_messages = [commit.get_text(strip=True) for commit in commits]
+
         if "github" in source:
             commit_urls = [
                 urljoin(source, commit.find("a")["href"]) for commit in commits
             ]
         else:
             commit_urls = [urljoin(source, commit.get("href")) for commit in commits]
+
         version_tags = [override_shown_tag if override_shown_tag else new_tag] * len(
             commit_messages
         )
@@ -1147,34 +1079,150 @@ class PackageHandler:
         else:
             return None
 
-    def check_website_availabilty(self, url: str) -> bool:
-        """Checks the availability of a website by sending an HTTP GET request.
-        This function sends a GET request to the specified URL and checks the HTTP status code of the response.
-        If the status code is 200, it indicates that the website is reachable. Any other status code indicates
-        that the website may be down or returning an error.
+    def get_changelog_kde_package(
+        self,
+        url: str,
+        current_main: str,
+        new_main: str,
+        package_name: str,
+        override_shown_tag: Optional[str] = None,
+    ) -> List[Tuple[str, str, str, str, str]]:
+        """ """
+        kde_package_categories = [
+            "plasma",
+            "frameworks",
+            "utilities",
+            "libraries",
+            "system",
+            "graphics",
+            "accessibility",
+            "education",
+            "games",
+        ]
 
-        :param url: The URL of the website to check.
-        :type url: str
-        :return: True if the website is reachable (status code 200), otherwise False.
-        :rtype: bool
-        :raises requests.RequestException: If an error occurs during the HTTP request.
-            This includes network errors, invalid URLs, or issues with the request itself.
-        """
-        try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                self.logger.info(f"Website: {url} is reachable")
-                return True
-            else:
-                self.logger.info(
-                    f"Website: {url} returned status code {response.status_code}."
+        # KDE tags look like this: v6.1.3 while Arch uses it like this 1:6.1.3-1
+        current_version_altered = "v" + current_main.replace("1:", "")
+        new_version_altered = "v" + new_main.replace("1:", "")
+
+        # The upstream URL of KDE packages can look differently
+        # - https://apps.kde.org/ark/
+        # - https://community.kde.org/Frameworks
+        # - https://kde.org/plasma-desktop/
+        #
+        # 1. Check if the upstream URL already contains the kde category
+        #    - Example: https://archlinux.org/packages/extra/x86_64/ark/
+        # 2. Try to open https://apps.kde.org/... and extract the category from there
+        #    - Example: https://apps.kde.org/ark/
+        # 3. Try to extract the category out of the `url = https://...` in .SRCINFO (To be implemented)
+        #    - Example: https://gitlab.archlinux.org/archlinux/packaging/packages/ark/-/blob/main/.SRCINFO
+        # 4. Brute force method, go through each KDE category and try if URL is reachable (To be implemented)
+        #    - Example 1: https://invent.kde.org/frameworks/baloo-widgets
+        #    - Example 2: https://invent.kde.org/libraries/baloo-widgets
+        kde_category_found = False
+        for tries in range(3):
+            match tries:
+                case 0:
+                    kde_category = next(
+                        (
+                            category
+                            for category in kde_package_categories
+                            if re.search(category, url, re.IGNORECASE)
+                        ),
+                        None,
+                    )
+
+                    if kde_category:
+                        kde_category_found = True
+                        self.logger.debug(f"KDE category: {kde_category}")
+                        break
+                case 1:
+                    kde_category_url = "https://apps.kde.org/" + package_name
+
+                    if not self.web_scraper.check_website_availabilty(kde_category_url):
+                        self.logger.debug(
+                            f"Website: {kde_category_url} is not reachable"
+                        )
+                        break
+
+                    response = self.web_scraper.fetch_page_content(kde_category_url)
+                    if not response:
+                        self.logger.debug(
+                            f"No response received from {kde_category_url} while getting the KDE package changelog"
+                        )
+                        break
+
+                    kde_category_raw = self.web_scraper.find_element(
+                        response, "a", attrs={"href": re.compile(r"^/categories/.+")}
+                    )
+
+                    if kde_category_raw:
+                        kde_category = kde_category_raw.text.strip()
+                        kde_category_found = True
+                        self.logger.debug(f"KDE category: {kde_category}")
+                        break
+                    else:
+                        self.logger.error(
+                            f"ERROR: Couldn't extract KDE package category from {kde_category_url}"
+                        )
+
+        kde_gitlab_url = None
+        if kde_category_found:
+            for category in kde_package_categories:
+                if category in kde_category.lower():
+                    kde_gitlab_url = (
+                        "https://invent.kde.org/" + category + "/" + package_name
+                    )
+
+            if not kde_gitlab_url:
+                self.logger.error(f"ERROR: Unknown KDE GitLab group in: {kde_category}")
+        else:
+            for category in kde_package_categories:
+                kde_gitlab_url = (
+                    "https://invent.kde.org/" + category + "/" + package_name
                 )
-                return False
-        except requests.RequestException as ex:
-            self.logger.error(
-                f"ERROR: An error occured during checking availability of website {url}. Error code: {ex}"
+
+                # We can't use the check_website_availability function of web_scraper since a wrong
+                # URL won't lead to a 404 or another error return code but to a sign in page which
+                # is interpreted as accessible.
+                # Example:
+                # - https://invent.kde.org/libraries/baloo-widgets (correct URL)
+                # - https://invent.kde.org/plasma/baloo-widgets (wrong URL)
+                # This is why we look for a specific element on the website which only exists on the
+                # correct website.
+                response = self.web_scraper.fetch_page_content(kde_gitlab_url)
+                if not response:
+                    self.logger.debug(
+                        f"No response received from {kde_gitlab_url} while getting the KDE package changelog"
+                    )
+                    continue
+
+                kde_package_name_extracted = self.web_scraper.find_element(
+                    response, "a", text=lambda text: text and package_name in text
+                )
+
+                if (
+                    kde_package_name_extracted is not None
+                    and package_name in kde_package_name_extracted.text
+                ):
+                    self.logger.debug(f"KDE GitLab package URL: {kde_gitlab_url}")
+                    break
+
+        if kde_gitlab_url:
+            package_changelog_temp = self.get_changelog_compare_package_tags(
+                kde_gitlab_url,
+                current_version_altered,
+                new_version_altered,
+                package_name,
+                "major",
+                override_shown_tag,
             )
-            return False
+
+            if package_changelog_temp:
+                return package_changelog_temp
+            else:
+                return None
+        else:
+            return None
 
     def find_intermediate_tags(self, package_tags, current_tag: str, new_tag: str) -> Optional[List[Tuple[str, str]]]:
         """Finds and returns intermediate tags between the current and new version tags for a package.

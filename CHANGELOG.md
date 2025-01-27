@@ -6,6 +6,9 @@
 - **Package Handler** Added further replacement values for Arch Gitlab packages (example gjs)
 - **Package Handler** Added a check to verify if the upstream package tags differ from the Arch package tags
 - **Config Handler** Added sphinx docstrings
+- **Web Scraper** Move check_website_availabilty from package_handler to web_scraper
+- **Package Handler** Moved the KDE package changelog logic into a separate function
+- **Package Handler** Improved the detection of KDE package changelog
 
 ### Bug fixes
 
