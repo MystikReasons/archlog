@@ -57,7 +57,7 @@ class PackageHandler:
         :raises Exception: For any unexpected errors.
         :raises SystemExit: Always called if any exception is encountered, terminating the program.
         :return: A list of upgradable package names. Each entry in the list is a string.
-        :rtype: Optional[List[str]]
+        :rtype: List[str]
         """
         try:
             # Update the local mirror
@@ -274,7 +274,7 @@ class PackageHandler:
             match package_upstream_url:
                 case url if "github.com" in url or "gitlab.com" in url:
                     package_changelog_temp = self.get_changelog_compare_package_tags(
-                        package_upstream_url,
+                        url,
                         package.current_version_altered,
                         package.new_version_altered,
                         arch_package_name,
@@ -510,7 +510,7 @@ class PackageHandler:
             and second_compare_suffix != package.new_suffix
         ):
             self.logger.info(
-                f"{package.new_version_altered} is a minor release (afer intermediate release)"
+                f"{package.new_version_altered} is a minor release (after intermediate release)"
             )
 
             package_changelog_temp = self.get_changelog_compare_package_tags(
@@ -526,7 +526,7 @@ class PackageHandler:
         # Check if the last intermediate tag is a major release
         elif second_compare_main != package.new_main:
             self.logger.info(
-                f"{package.new_version_altered} is a major release (afer intermediate release)"
+                f"{package.new_version_altered} is a major release (after intermediate release)"
             )
 
             # Always get the Arch package changelog too, which is the same as the "minor" release case
@@ -592,13 +592,12 @@ class PackageHandler:
             return None
 
     def get_package_architecture(self, package_name: str) -> str:
-        """
-        Retrieves the architecture of a specified package using `pacman`.
-
+        """Retrieves the architecture of a specified package using `pacman`.
         This function runs `sudo pacman -Q --info <package_name>` to obtain information about the
         package, then parses the output to extract the architecture of the package.
 
-        :param str package_name: The name of the upgradable package whose architecture should be retrieved.
+        :param package_name: The name of the upgradable package whose architecture should be retrieved.
+        :type package_name: str
         :return: The architecture of the specified package.
         :rtype: str
         :raises subprocess.CalledProcessError: If the `pacman` command returns a non-zero exit status.
@@ -1224,7 +1223,9 @@ class PackageHandler:
         else:
             return None
 
-    def find_intermediate_tags(self, package_tags, current_tag: str, new_tag: str) -> Optional[List[Tuple[str, str]]]:
+    def find_intermediate_tags(
+        self, package_tags, current_tag: str, new_tag: str
+    ) -> Optional[List[Tuple[str, str]]]:
         """Finds and returns intermediate tags between the current and new version tags for a package.
         This method looks for tags between the current and new versions within a list of package tags.
         It ensures that intermediate versions are correctly identified, reversed if necessary, and returned

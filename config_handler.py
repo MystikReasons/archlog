@@ -32,7 +32,7 @@ class ConfigHandler:
         """
         Sets up logging for the application by configuring file and console handlers.
 
-        The function initializes logging to a file and outputs logs to the console. 
+        The function initializes logging to a file and outputs logs to the console.
         Handles potential errors during the setup, such as file access issues.
 
         :raises FileNotFoundError: If the log file path is invalid or cannot be found.

@@ -17,6 +17,7 @@
 - **Package Handler** Fix: Switched return statements in get_upgradable_packages to exit statements
 - **Package Handler** Fix: Correct condition logic for source data validation
 - **Package Handler** Fix: Correct web_scraper instance for website availability check in get_package_repository
+- Many small improvements
 
 # 1.0.4 (2025-01-02)
 

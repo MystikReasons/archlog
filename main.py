@@ -13,6 +13,7 @@ def main():
     logger.debug("Logger is set up")
 
     packages_to_update = package_handler.get_upgradable_packages()
+
     max_package_name_length = max(
         len(package.package_name) for package in packages_to_update
     )
