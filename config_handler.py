@@ -207,5 +207,5 @@ class ConfigHandler:
             )
 
         # Write the updated website file data back to the file
-        with open(changelog_filename, "w") as json_write_file:
-            json.dump(existing_data, json_write_file, indent=4)
+        with open(changelog_filename, "w", encoding="utf-8") as json_write_file:
+            json.dump(existing_data, json_write_file, indent=4, ensure_ascii=False)

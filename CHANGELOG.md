@@ -18,6 +18,7 @@
 - **Package Handler** Fix: Correct condition logic for source data validation
 - **Package Handler** Fix: Correct web_scraper instance for website availability check in get_package_repository
 - Many small improvements
+- **Config Handler** Fix: Parse UTF-8 characters correctly in the changelog file
 
 # 1.0.4 (2025-01-02)
 
