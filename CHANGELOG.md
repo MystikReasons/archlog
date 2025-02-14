@@ -1,4 +1,4 @@
-# 1.0.5 ()
+# 1.0.5 (2025-02-14)
 
 ### Features and enhancements
 
@@ -9,6 +9,7 @@
 - **Web Scraper** Move check_website_availabilty from package_handler to web_scraper
 - **Package Handler** Moved the KDE package changelog logic into a separate function
 - **Package Handler** Improved the detection of KDE package changelog
+- **Changelog** Added compare tags URL's for arch/minor and major packages
 
 ### Bug fixes
 

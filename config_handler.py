@@ -133,20 +133,42 @@ class ConfigHandler:
         versions_dict = {}
 
         if package_changelog:
-            major_changelog_found = False
-
             for (
                 changelog_message,
                 package_url,
                 package_tag,
                 arch_package_name,
                 release_type,
+                compare_tags_url,
             ) in package_changelog:
+                compare_tags_url_arch = ""
+                compare_tags_url_origin = ""
+
                 if package_tag not in versions_dict:
+                    for package_temp in package_changelog:
+                        if package_tag == package_temp[2]:
+                            if compare_tags_url_arch and compare_tags_url_origin:
+                                break
+
+                            compare_url = package_temp[5]
+                            if (
+                                (
+                                    package_temp[4] == "arch"
+                                    or package_temp[4] == "minor"
+                                )
+                                and "archlinux.org" in compare_url
+                                and not compare_tags_url_arch
+                            ):
+                                compare_tags_url_arch = compare_url
+                            elif package_temp[4] == "major":
+                                compare_tags_url_origin = compare_url
+
                     versions_dict[package_tag] = {
                         "release-type": (
                             "major" if release_type == "arch" else release_type
                         ),
+                        "compare-url-tags-arch": (compare_tags_url_arch),
+                        "compare-url-tags-origin": (compare_tags_url_origin),
                         "changelog": {
                             "changelog Arch package": [],
                             "changelog origin package": [],
@@ -157,11 +179,13 @@ class ConfigHandler:
                         versions_dict[package_tag]["changelog"][
                             "changelog origin package"
                         ].append("- Not applicable, minor release -")
-
-                    if release_type != "minor" and not major_changelog_found:
+                        versions_dict[package_tag][
+                            "compare-url-tags-origin"
+                        ] = "- Not applicable, minor release -"
+                    else:
                         major_exists = any(
                             release_type_check == "major"
-                            for _, _, _, _, release_type_check in package_changelog
+                            for _, _, _, _, release_type_check, _ in package_changelog
                         )
 
                         if not major_exists:
@@ -170,8 +194,6 @@ class ConfigHandler:
                             ].append(
                                 "- ERROR: Couldn't find origin changelog. Check the logs for further information -"
                             )
-                            major_changelog_found = True
-
                 if (
                     arch_package_name == package.package_name
                     and release_type != "major"
@@ -191,17 +213,26 @@ class ConfigHandler:
             version_tag = package.current_version
             versions_dict[version_tag] = {
                 "release-type": "unknown",
+                "compare-url-tags-arch": "",
+                "compare-url-tags-origin": "",
                 "changelog": {
                     "changelog Arch package": [],
                     "changelog origin package": [],
                 },
             }
 
-        for versionTag, changelog_data in versions_dict.items():
+        for (
+            versionTag,
+            changelog_data,
+        ) in versions_dict.items():
             existing_data["changelog"][package.package_name]["versions"].append(
                 {
                     "version-tag": versionTag,
                     "release-type": changelog_data["release-type"],
+                    "compare-url-tags-arch": changelog_data["compare-url-tags-arch"],
+                    "compare-url-tags-origin": changelog_data[
+                        "compare-url-tags-origin"
+                    ],
                     "changelog": changelog_data["changelog"],
                 }
             )

@@ -88,7 +88,14 @@ def main():
 
         if package_changelog:
             logger.info("Changelog:")
-            for message, url, tag, package_type, release_type in package_changelog:
+            for (
+                message,
+                url,
+                tag,
+                package_type,
+                release_type,
+                compare_tags_urls,
+            ) in package_changelog:
                 logger.info(f"- {message}")
                 logger.info(f"\t{url}")
         else:

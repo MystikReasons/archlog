@@ -20,6 +20,8 @@ This script does currently only work with offical Arch packages, Flatpack, AUR e
             {
                 "version-tag": "15.2-2",
                 "release-type": "minor",
+                "compare-url-tags-arch": "https://gitlab.archlinux.org/archlinux/packaging/packages/gdb/-/compare/15.2-1...15.2-2",
+                "compare-url-tags-origin": "- Not applicable, minor release -",
                 "changelog": {
                     "changelog Arch package": [
                         {
@@ -49,6 +51,8 @@ This script does currently only work with offical Arch packages, Flatpack, AUR e
             {
                 "version-tag": "21.1.14-1",
                 "release-type": "major",
+                "compare-url-tags-arch": "https://gitlab.archlinux.org/archlinux/packaging/packages/xorg-server/-/compare/21.1.13-1...21.1.14-1",
+                "compare-url-tags-origin": "https://gitlab.freedesktop.org/xorg/xserver/-/compare/xorg-server-21.1.13...xorg-server-21.1.14",
                 "changelog": {
                     "changelog Arch package": [
                         {

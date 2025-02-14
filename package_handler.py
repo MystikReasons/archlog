@@ -1066,10 +1066,16 @@ class PackageHandler:
         )
         package_names = [package_name] * len(commit_messages)
         release_types = [release_type] * len(commit_messages)
+        compare_tags_urls = [compare_tags_url] * len(commit_messages)
 
         combined_info = list(
             zip(
-                commit_messages, commit_urls, version_tags, package_names, release_types
+                commit_messages,
+                commit_urls,
+                version_tags,
+                package_names,
+                release_types,
+                compare_tags_urls,
             )
         )
 
