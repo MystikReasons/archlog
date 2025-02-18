@@ -947,7 +947,7 @@ class PackageHandler:
 
                 if current_tag not in upstream_package_tags:
                     closest_match_current_tag = get_close_matches(
-                        current_tag, tag_versions, n=1, cutoff=0.6
+                        current_tag, tag_versions, n=1, cutoff=0.5
                     )
 
                     if closest_match_current_tag:
@@ -962,7 +962,7 @@ class PackageHandler:
                 if new_tag or override_shown_tag not in upstream_package_tags:
                     new_tag_to_check = override_shown_tag or new_tag
                     closest_match_new_tag = get_close_matches(
-                        new_tag_to_check, tag_versions, n=1, cutoff=0.6
+                        new_tag_to_check, tag_versions, n=1, cutoff=0.5
                     )
 
                     if closest_match_new_tag:

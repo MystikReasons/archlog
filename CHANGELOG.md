@@ -7,6 +7,8 @@
 
 ### Bug fixes
 
+- **Package Handler** Reduce cutoff in get_close_matches to improve the detection of similar tags
+
 # 1.0.5 (2025-02-14)
 
 ### Features and enhancements
