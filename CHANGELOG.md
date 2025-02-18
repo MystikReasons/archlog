@@ -1,3 +1,11 @@
+# 1.0.6 ()
+
+### Features and enhancements
+
+- **Package Handler** Reduced multiple similar code into a single new function: `get_package_changelog_upstream_source`
+
+### Bug fixes
+
 # 1.0.5 (2025-02-14)
 
 ### Features and enhancements

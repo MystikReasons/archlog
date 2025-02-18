@@ -271,81 +271,18 @@ class PackageHandler:
             if package_changelog_temp:
                 package_changelog += package_changelog_temp
 
-            match package_upstream_url:
-                case url if "github.com" in url or "gitlab.com" in url:
-                    package_changelog_temp = self.get_changelog_compare_package_tags(
-                        url,
-                        package.current_version_altered,
-                        package.new_version_altered,
-                        arch_package_name,
-                        "major",
-                        package.new_version_altered,
-                    )
+            package_changelog_temp = self.get_package_changelog_upstream_source(
+                package_upstream_url,
+                package_source_files_url,
+                package,
+                package.current_version_altered,
+                package.new_version_altered,
+                arch_package_name,
+                package.new_version_altered,
+            )
 
-                    if package_changelog_temp:
-                        package_changelog += package_changelog_temp
-
-                case url if "kde.org" in url:
-                    package_changelog_temp = self.get_changelog_kde_package(
-                        url,
-                        package.current_main,
-                        package.new_main,
-                        arch_package_name,
-                        package.new_version_altered,
-                    )
-
-                    if package_changelog_temp:
-                        package_changelog += package_changelog_temp
-
-                case _:
-                    current_tag_url = (
-                        package_source_files_url
-                        + "/-/blob/"
-                        + package.current_version_altered
-                        + "/.SRCINFO"
-                    )
-                    new_tag_url = (
-                        package_source_files_url
-                        + "/-/blob/"
-                        + package.new_version_altered
-                        + "/.SRCINFO"
-                    )
-                    self.logger.debug(f"Current tag URL: {current_tag_url}")
-                    self.logger.debug(f"New tag URL: {new_tag_url}")
-                    # https://gitlab.archlinux.org/archlinux/packaging/packages/pipewire/-/blob/1-1.2.3-1/.SRCINFO
-
-                    first_source_url = self.get_arch_package_source_url(current_tag_url)
-                    second_source_url = self.get_arch_package_source_url(new_tag_url)
-                    first_source_tag = self.get_arch_package_source_tag(current_tag_url)
-                    second_source_tag = self.get_arch_package_source_tag(new_tag_url)
-
-                    if first_source_url != second_source_url:
-                        return package_changelog if package_changelog else None
-
-                    if all(
-                        x is not None
-                        for x in [
-                            first_source_url,
-                            second_source_url,
-                            first_source_tag,
-                            second_source_tag,
-                        ]
-                    ):
-                        package_changelog_temp = (
-                            self.get_changelog_compare_package_tags(
-                                first_source_url,
-                                first_source_tag,
-                                second_source_tag,
-                                arch_package_name,
-                                "major",
-                                package.new_version_altered,
-                            )
-                        )
-
-                        if package_changelog_temp:
-                            package_changelog += package_changelog_temp
-                    else:
-                        return package_changelog if package_changelog else None
+            if package_changelog_temp:
+                package_changelog += package_changelog_temp
 
         # Check if there was a minor release
         # Example: 1.16.5-2 -> 1.16.5-3
@@ -442,6 +379,7 @@ class PackageHandler:
                     package_changelog += package_changelog_temp
 
             # Check if there was a major release in between
+            # Example: 1.16.5-1 -> 1.16.6-1
             elif first_compare_main != second_compare_main:
                 self.logger.info(f"{release} is a major intermediate release")
 
@@ -473,36 +411,20 @@ class PackageHandler:
                 if package_changelog_temp:
                     package_changelog += package_changelog_temp
 
-                first_source_url = self.get_arch_package_source_url(first_tag_url)
-                second_source_url = self.get_arch_package_source_url(second_tag_url)
-                first_source_tag = self.get_arch_package_source_tag(first_tag_url)
-                second_source_tag = self.get_arch_package_source_tag(second_tag_url)
+                package_changelog_temp = self.get_package_changelog_upstream_source(
+                    package_upstream_url,
+                    package_source_files_url,
+                    package,
+                    first_compare_version,
+                    release,
+                    package.package_name,
+                    release,
+                )
 
-                if first_source_url != second_source_url:
-                    continue
-
-                if all(
-                    x is not None
-                    for x in [
-                        first_source_url,
-                        second_source_url,
-                        first_source_tag,
-                        second_source_tag,
-                    ]
-                ):
-                    package_changelog_temp = self.get_changelog_compare_package_tags(
-                        first_source_url,
-                        first_source_tag,
-                        second_source_tag,
-                        package.package_name,
-                        "major",
-                        release,
-                    )
-
-                    if package_changelog_temp:
-                        package_changelog += package_changelog_temp
-                else:
-                    continue
+                if package_changelog_temp:
+                    package_changelog += package_changelog_temp
+            else:
+                continue
 
         # Check if the last intermediate tag is a minor release
         if (
@@ -542,49 +464,18 @@ class PackageHandler:
             if package_changelog_temp:
                 package_changelog += package_changelog_temp
 
-            second_tag_url = (
-                package_source_files_url + "/-/blob/" + release + "/.SRCINFO"
+            package_changelog_temp = self.get_package_changelog_upstream_source(
+                package_upstream_url,
+                package_source_files_url,
+                package,
+                release,
+                package.new_version,
+                package.package_name,
+                package.new_version_altered,
             )
-            second_source_url = self.get_arch_package_source_url(second_tag_url)
-            second_source_tag = self.get_arch_package_source_tag(second_tag_url)
 
-            last_tag_url = (
-                package_source_files_url
-                + "/-/blob/"
-                + package.new_version
-                + "/.SRCINFO"
-            )
-            last_source_url = self.get_arch_package_source_url(last_tag_url)
-            last_source_tag = self.get_arch_package_source_tag(last_tag_url)
-
-            if (
-                not second_source_url
-                or not second_source_tag
-                and not last_source_url
-                or not last_source_tag
-            ):
-                if package_changelog:
-                    return package_changelog
-                else:
-                    return None
-            else:
-                if second_source_url != last_source_url:
-                    if package_changelog:
-                        return package_changelog
-                    else:
-                        return None
-
-                package_changelog_temp = self.get_changelog_compare_package_tags(
-                    second_source_url,
-                    second_source_tag,
-                    last_source_tag,
-                    package.package_name,
-                    "major",
-                    package.new_version_altered,
-                )
-
-                if package_changelog_temp:
-                    package_changelog += package_changelog_temp
+            if package_changelog_temp:
+                package_changelog += package_changelog_temp
 
         if package_changelog:
             return package_changelog
@@ -932,6 +823,117 @@ class PackageHandler:
                 f"ERROR: An unexpected error occurred while parsing the HTML or extracting tag information: {ex}"
             )
             return None
+
+    def get_package_changelog_upstream_source(
+        self,
+        package_upstream_url: str,
+        package_source_files_url: str,
+        package: List[namedtuple],
+        current_tag: str,
+        new_tag: str,
+        package_name: str,
+        override_shown_tag: Optional[str] = None,
+    ) -> Optional[List[Tuple[str, str, str, str, str]]]:
+        """Processes upstream package sources and retrieves changelog information
+        by comparing different package versions from various upstream sources.
+
+        Depending on the package upstream URL, the function determines how to retrieve
+        and compare package versions. It supports GitHub, GitLab, KDE, and Arch Linux
+        package sources. If a changelog is available, it is added to the package changelog list.
+
+        :param package_upstream_url: The upstream source URL of the package.
+        :type package_upstream_url: str
+        :param package_source_files_url: The upstream URL of the package.
+        :type package_source_files_url: str
+        :param package: A named tuple containing the package information, such as the package name,
+                        current version, new version, main version tags, and suffixes.
+        :type package: namedtuple
+        :param current_tag: The current version tag of the package.
+        :type current_tag: str
+        :param new_tag: The new version tag of the package.
+        :type new_tag: str
+        :param package_name: The name of the package.
+        :type package_name: str
+        :param override_shown_tag: Optional override for the displayed version tag.
+        :type override_shown_tag: Optional[str], default is None
+        :return: A list of tuples containing changelog information.
+                 Each tuple consists of (source_url, old_version, new_version, package_name, release_type).
+                 Returns None if no changelog information is found.
+        :rtype: Optional[List[Tuple[str, str, str, str, str]]]
+        """
+        package_changelog = []
+        match package_upstream_url:
+            case url if "github.com" in url or "gitlab.com" in url:
+                package_changelog_temp = self.get_changelog_compare_package_tags(
+                    url,
+                    current_tag,
+                    new_tag,
+                    package_name,
+                    "major",
+                    override_shown_tag,
+                )
+
+                if package_changelog_temp:
+                    package_changelog += package_changelog_temp
+
+            case url if "kde.org" in url:
+                current_main = current_tag.split("-")[0]
+                new_main = new_tag.split("-")[0]
+
+                package_changelog_temp = self.get_changelog_kde_package(
+                    url, current_main, new_main, package_name, override_shown_tag
+                )
+
+                if package_changelog_temp:
+                    package_changelog += package_changelog_temp
+
+            case _:
+                current_tag_url = (
+                    package_source_files_url
+                    + "/-/blob/"
+                    + package.current_version_altered
+                    + "/.SRCINFO"
+                )
+                new_tag_url = (
+                    package_source_files_url
+                    + "/-/blob/"
+                    + package.new_version_altered
+                    + "/.SRCINFO"
+                )
+                # https://gitlab.archlinux.org/archlinux/packaging/packages/pipewire/-/blob/1-1.2.3-1/.SRCINFO
+                self.logger.debug(f"Current tag URL: {current_tag_url}")
+                self.logger.debug(f"New tag URL: {new_tag_url}")
+
+                first_source_url = self.get_arch_package_source_url(current_tag_url)
+                second_source_url = self.get_arch_package_source_url(new_tag_url)
+                first_source_tag = self.get_arch_package_source_tag(current_tag_url)
+                second_source_tag = self.get_arch_package_source_tag(new_tag_url)
+
+                if first_source_url != second_source_url:
+                    return package_changelog if package_changelog else None
+
+                if all(
+                    x is not None
+                    for x in [
+                        first_source_url,
+                        second_source_url,
+                        first_source_tag,
+                        second_source_tag,
+                    ]
+                ):
+                    package_changelog_temp = self.get_changelog_compare_package_tags(
+                        first_source_url,
+                        first_source_tag,
+                        second_source_tag,
+                        package_name,
+                        "major",
+                        override_shown_tag,
+                    )
+
+                    if package_changelog_temp:
+                        package_changelog += package_changelog_temp
+
+        return package_changelog if package_changelog else None
 
     def get_changelog_compare_package_tags(
         self,
