@@ -346,7 +346,7 @@ class PackageHandler:
 
                 first_compare_version = intermediate_tags[index - 1][0]
 
-            # Some package tags can look like this:
+            # Package tags can look like this:
             # 1-16.5-2 or 20240526-1
             if release.count("-") >= 2:
                 second_compare_main = release.split("-")[0].replace("1:", "1-")
@@ -382,22 +382,6 @@ class PackageHandler:
             # Example: 1.16.5-1 -> 1.16.6-1
             elif first_compare_main != second_compare_main:
                 self.logger.info(f"{release} is a major intermediate release")
-
-                # Check if the 'source' does contain something like gitlab or github
-                # when the 'Upstream URL' does not contain another source code hosting website
-                first_tag_url = (
-                    package_source_files_url
-                    + "/-/blob/"
-                    + first_compare_version
-                    + "/.SRCINFO"
-                )
-
-                second_tag_url = (
-                    package_source_files_url + "/-/blob/" + release + "/.SRCINFO"
-                )
-                self.logger.debug(f"First tag URL: {first_tag_url}")
-                self.logger.debug(f"Second tag URL: {second_tag_url}")
-                # https://gitlab.archlinux.org/archlinux/packaging/packages/pipewire/-/blob/1-1.2.3-1/.SRCINFO
 
                 # Always get the Arch package changelog too, which is the same as the "minor" release case
                 package_changelog_temp = self.get_changelog_compare_package_tags(
@@ -581,10 +565,6 @@ class PackageHandler:
                 else:
                     self.logger.error(f"ERROR: Couldn't find 'source =' in {url}")
                     return None
-
-        except requests.RequestException as ex:
-            self.logger.error(f"ERROR: HTTP Request failed for URL {url}: {ex}")
-            return None
         except Exception as ex:
             self.logger.error(
                 f"ERROR: Unexpected error while processing URL {url}: {ex}"
@@ -630,10 +610,6 @@ class PackageHandler:
                         f"ERROR: Couldn't find information 'tag=' in node 'source =' in {url}"
                     )
                     return None
-
-        except requests.RequestException as ex:
-            self.logger.error(f"ERROR: HTTP Request failed for URL {url}: {ex}")
-            return None
         except Exception as ex:
             self.logger.error(
                 f"ERROR: Unexpected error while processing URL {url}: {ex}"
@@ -738,11 +714,6 @@ class PackageHandler:
             else:
                 self.logger.error(f"ERROR: Couldn't find node 'Source Files' on {url}")
                 return None
-        except requests.RequestException as ex:
-            self.logger.error(
-                f"ERROR: An error occurred during the HTTP request to {url}. Error code: {ex}"
-            )
-            return None
         except Exception as ex:
             self.logger.error(
                 f"ERROR: An unexpected error occurred while parsing the HTML: {ex}"
@@ -812,12 +783,6 @@ class PackageHandler:
                 combined_info[index] = (transformed_release, time)
 
             return combined_info
-
-        except requests.RequestException as ex:
-            self.logger.error(
-                f"ERROR: An error occurred during the HTTP request to {url}. Error code: {ex}"
-            )
-            return None
         except Exception as ex:
             self.logger.error(
                 f"ERROR: An unexpected error occurred while parsing the HTML or extracting tag information: {ex}"
@@ -1039,6 +1004,11 @@ class PackageHandler:
 
         # TODO: If the source hosting site is Github which can display commits only on multiple pages, how
         #       should we handle that?
+        # TODO: GitLab hides commits in cases where there are more than 100 due to perfomance reasons but there is no button visible
+        #       Example: https://gitlab.com/kernel-firmware/linux-firmware/-/compare/20250109...20250211?from_project_id=48890189
+        #       This is a known issue with Gitlab and a fix is hopefully "soon" here:
+        #       https://gitlab.com/gitlab-org/gitlab/-/issues/16800
+        #       https://gitlab.com/gitlab-org/gitlab/-/issues/16746
         if "github" in source:
             kwargs = "mb-1"
             tag = "p"

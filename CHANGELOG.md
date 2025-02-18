@@ -3,6 +3,7 @@
 ### Features and enhancements
 
 - **Package Handler** Reduced multiple similar code into a single new function: `get_package_changelog_upstream_source`
+- **Package Handler** Refactoring, removed unused code, some cleanups
 
 ### Bug fixes
 
