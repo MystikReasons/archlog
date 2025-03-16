@@ -164,6 +164,41 @@ class PackageHandler:
 
         return packages_restructured
 
+    def split_package_tag(self, tag: str) -> tuple[str, str]:
+        """
+        Splits a package tag into its main part and suffix.
+
+        The function determines the number of parts in the tag based on the occurrences of "-".
+        Depending on the tag format, it assigns the main and suffix parts accordingly.
+
+        Examples:
+            - "1-15.2.3-2" -> ("15.2.3", "1")
+            - "24.12.2-1" -> ("24.12.2", "1")
+
+        :param tag: The package tag to be split.
+        :type tag: str
+        :return: A tuple containing the main part of the tag and the suffix.
+        :rtype: tuple[str, str]
+        """
+        # Add + 1 because if there are at least two "-", it's always one part more
+        tag_parts_count = tag.count("-") + 1
+        tag_parts = tag.split("-")[:tag_parts_count]
+
+        # Differentiate the different tag styles
+        # Example: 1-15.2.3-2, 24.12.2-1
+        if tag_parts_count >= 3:
+            tag_part_suffix = tag_parts[0]
+            tag_part_main = tag_parts[1]
+        else:
+            if len(tag_parts[0]) < len(tag_parts[1]):
+                tag_part_suffix = tag_parts[0]
+                tag_part_main = tag_parts[1]
+            else:
+                tag_part_suffix = tag_parts[1]
+                tag_part_main = tag_parts[0]
+
+        return tag_part_main, tag_part_suffix
+
     def get_package_changelog(
         self, package: namedtuple
     ) -> Optional[List[Tuple[str, str, str, str, str]]]:
@@ -331,24 +366,8 @@ class PackageHandler:
                 first_compare_suffix = package.current_suffix
                 first_compare_version = package.current_version_altered
             else:
-                # Some package tags can look like this:
-                # 1-16.5-2 or 20240526-1
-                if intermediate_tags[index - 1][0].count("-") >= 2:
-                    first_compare_main = (
-                        intermediate_tags[index - 1][0]
-                        .split("-")[:2]
-                        .replace("1:", "1-")
-                    )
-                    first_compare_suffix = intermediate_tags[index - 1][0].split("-")[2]
-                else:
-                    first_compare_main = (
-                        intermediate_tags[index - 1][0]
-                        .split("-")[0]
-                        .replace("1:", "1-")
-                    )
-                    first_compare_suffix = intermediate_tags[index - 1][0].split("-")[1]
-
                 first_compare_version = intermediate_tags[index - 1][0]
+                first_compare_main, first_compare_suffix = self.split_package_tag(first_compare_version)
 
             # Package tags can look like this:
             # 1-16.5-2 or 20240526-1
@@ -857,8 +876,8 @@ class PackageHandler:
                     package_changelog += package_changelog_temp
 
             case url if "kde.org" in url:
-                current_main = current_tag.split("-")[0]
-                new_main = new_tag.split("-")[0]
+                current_main, current_suffix = self.split_package_tag(current_tag)
+                new_main, new_suffix = self.split_package_tag(new_tag)
 
                 package_changelog_temp = self.get_changelog_kde_package(
                     url, current_main, new_main, package_name, override_shown_tag
