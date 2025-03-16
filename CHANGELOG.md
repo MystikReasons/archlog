@@ -10,6 +10,7 @@
 ### Bug fixes
 
 - **Package Handler** Reduce cutoff in get_close_matches to improve the detection of similar tags
+- **Package Handler** Improved URL regex to handle cases without fragments
 
 # 1.0.5 (2025-02-14)
 
