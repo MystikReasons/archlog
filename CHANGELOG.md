@@ -4,6 +4,7 @@
 
 - **Package Handler** Reduced multiple similar code into a single new function: `get_package_changelog_upstream_source`
 - **Package Handler** Refactoring, removed unused code, some cleanups
+- **Package Handler** Improved error handling and added logging for missing responses
 
 ### Bug fixes
 

@@ -193,6 +193,10 @@ class PackageHandler:
         package_repository = self.get_package_repository(
             self.enabled_repositories, package.package_name, package_architecture
         )
+
+        if not package_repository:
+            return None
+
         # TODO: package_repository should not be an array anymore in the future
         arch_package_url = (
             "https://archlinux.org/packages/"
@@ -538,6 +542,10 @@ class PackageHandler:
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
+            if not response:
+                self.logger.debug(f"No response received from {url}")
+                return None
+
             source_urls = self.web_scraper.find_all_elements(
                 response, None, string=lambda text: "source =" in text
             )
@@ -585,6 +593,10 @@ class PackageHandler:
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
+            if not response:
+                self.logger.debug(f"No response received from {url}")
+                return None
+
             source_urls = self.web_scraper.find_all_elements(
                 response, None, string=lambda text: "source =" in text
             )
@@ -673,7 +685,8 @@ class PackageHandler:
         :rtype: Optional[str]
         """
         response = self.web_scraper.fetch_page_content(url)
-        if response is None:
+        if not response:
+            self.logger.debug(f"No response received from {url}")
             return None
 
         upstream_link = self.web_scraper.find_element(
@@ -700,7 +713,8 @@ class PackageHandler:
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
-            if response is None:
+            if not response:
+                self.logger.debug(f"No response received from {url}")
                 return None
 
             source_file_link = self.web_scraper.find_element(
@@ -737,6 +751,7 @@ class PackageHandler:
         try:
             response = self.web_scraper.fetch_page_content(url)
             if not response:
+                self.logger.debug(f"No response received from {url}")
                 return None
 
             if "github" in url:
@@ -998,7 +1013,7 @@ class PackageHandler:
         self.logger.debug(f"Compare tags URL: {compare_tags_url}")
 
         response = self.web_scraper.fetch_page_content(compare_tags_url)
-        if not response:
+        if response is None:
             self.logger.debug(f"No response received from {compare_tags_url}")
             return None
 
