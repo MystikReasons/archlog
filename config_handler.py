@@ -77,7 +77,7 @@ class ConfigHandler:
             with open(self.config_path, "r") as read_config_file:
                 config = json.load(read_config_file)
         except FileNotFoundError:
-            self.logger.error(f"ERROR: Config file {self.config_path} not found.")
+            self.logger.error(f"[Error]: Config file {self.config_path} not found.")
             return None
         return config
 

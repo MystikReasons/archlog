@@ -25,11 +25,11 @@ class WebScraper:
                 return content
             except TimeoutError:
                 self.logger.error(
-                    f"Timeout error while fetching {url}. Retrying... [{attempt+1}/{retries}]"
+                    f"[Error]: Timeout error while fetching {url}. Retrying... [{attempt+1}/{retries}]"
                 )
             except Exception as ex:
                 self.logger.error(
-                    f"Error while fetching {url}: {ex}. Retrying... [{attempt+1}/{retries}]"
+                    f"[Error]: Error while fetching {url}: {ex}. Retrying... [{attempt+1}/{retries}]"
                 )
             finally:
                 attempt += 1
@@ -43,7 +43,7 @@ class WebScraper:
                     page.close()
 
         self.logger.error(
-            f"Failed to fetch content from {url} after {retries} retries."
+            f"[Error]: Failed to fetch content from {url} after {retries} retries."
         )
         return None
 
@@ -87,16 +87,16 @@ class WebScraper:
         try:
             response = requests.get(url)
             if response.status_code == 200:
-                self.logger.info(f"Website: {url} is reachable")
+                self.logger.info(f"[Info]: Website: {url} is reachable")
                 return True
             else:
                 self.logger.info(
-                    f"Website: {url} returned status code {response.status_code}."
+                    f"[Info]: Website: {url} returned status code {response.status_code}."
                 )
                 return False
         except requests.RequestException as ex:
             self.logger.error(
-                f"ERROR: An error occured during checking availability of website {url}. Error code: {ex}"
+                f"[Error]: An error occured during checking availability of website {url}. Error code: {ex}"
             )
             return False
 

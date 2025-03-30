@@ -83,18 +83,18 @@ class PackageHandler:
             return packages_to_update
         except subprocess.CalledProcessError as ex:
             self.logger.error(
-                f"ERROR: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
+                f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
             )
-            self.logger.error("Standard Error:")
+            self.logger.error("[Error]: Standard Error:")
             self.logger.error(ex.stderr)
             exit()
         except PermissionError:
             self.logger.error(
-                "ERROR: Permission denied. Are you sure you have the necessary permissions to run this command?"
+                "[Error]: Permission denied. Are you sure you have the necessary permissions to run this command?"
             )
             exit()
         except Exception as ex:
-            self.logger.error(f"ERROR: An unexpected error occurred: {ex}")
+            self.logger.error(f"[Error]: An unexpected error occurred: {ex}")
             exit()
 
     def split_package_information(self, packages: List[str]) -> List[namedtuple]:
@@ -267,7 +267,7 @@ class PackageHandler:
 
         if not arch_package_tags:
             self.logger.error(
-                f"ERROR: {arch_package_name}: Couldn't find any arch package tags"
+                f"[Error]: {arch_package_name}: Couldn't find any arch package tags"
             )
             return None
 
@@ -275,7 +275,7 @@ class PackageHandler:
             arch_package_tags, package.current_version, package.new_version
         )
         if intermediate_tags:
-            self.logger.info(f"Intermediate tags: {intermediate_tags}")
+            self.logger.info(f"[Info]: Intermediate tags: {intermediate_tags}")
             package_changelog_temp = self.handle_intermediate_tags(
                 intermediate_tags,
                 package,
@@ -291,12 +291,12 @@ class PackageHandler:
             else:
                 return None
         else:
-            self.logger.info("No intermediate tags found")
+            self.logger.info("[Info]: No intermediate tags found")
 
         # Check if there was a major release
         # Example: 1.16.5-2 -> 1.17.5-1
         if package.current_main != package.new_main:
-            self.logger.info(f"{package.new_version} is a major release")
+            self.logger.info(f"[Info]: {package.new_version} is a major release")
 
             # Always get the Arch package changelog too, which is the same as the "minor" release case
             package_changelog_temp = self.get_changelog_compare_package_tags(
@@ -330,7 +330,7 @@ class PackageHandler:
             and (package.current_suffix != package.new_suffix)
             and package_source_files_url
         ):
-            self.logger.info(f"{package.new_version} is a minor release")
+            self.logger.info(f"[Info]: {package.new_version} is a minor release")
 
             # Some Arch packages do have versions that look like this: 1:1.16.5-2
             # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
@@ -367,7 +367,9 @@ class PackageHandler:
                 first_compare_version = package.current_version_altered
             else:
                 first_compare_version = intermediate_tags[index - 1][0]
-                first_compare_main, first_compare_suffix = self.split_package_tag(first_compare_version)
+                first_compare_main, first_compare_suffix = self.split_package_tag(
+                    first_compare_version
+                )
 
             # Package tags can look like this:
             # 1-16.5-2 or 20240526-1
@@ -387,7 +389,7 @@ class PackageHandler:
                 first_compare_main == second_compare_main
                 and first_compare_suffix != second_compare_suffix
             ):
-                self.logger.info(f"{release} is a minor intermediate release")
+                self.logger.info(f"[Info]: {release} is a minor intermediate release")
 
                 package_changelog_temp = self.get_changelog_compare_package_tags(
                     package_source_files_url,
@@ -404,7 +406,7 @@ class PackageHandler:
             # Check if there was a major release in between
             # Example: 1.16.5-1 -> 1.16.6-1
             elif first_compare_main != second_compare_main:
-                self.logger.info(f"{release} is a major intermediate release")
+                self.logger.info(f"[Info]: {release} is a major intermediate release")
 
                 # Always get the Arch package changelog too, which is the same as the "minor" release case
                 package_changelog_temp = self.get_changelog_compare_package_tags(
@@ -439,7 +441,7 @@ class PackageHandler:
             and second_compare_suffix != package.new_suffix
         ):
             self.logger.info(
-                f"{package.new_version_altered} is a minor release (after intermediate release)"
+                f"[Info]: {package.new_version_altered} is a minor release (after intermediate release)"
             )
 
             package_changelog_temp = self.get_changelog_compare_package_tags(
@@ -455,7 +457,7 @@ class PackageHandler:
         # Check if the last intermediate tag is a major release
         elif second_compare_main != package.new_main:
             self.logger.info(
-                f"{package.new_version_altered} is a major release (after intermediate release)"
+                f"[Info]: {package.new_version_altered} is a major release (after intermediate release)"
             )
 
             # Always get the Arch package changelog too, which is the same as the "minor" release case
@@ -514,18 +516,18 @@ class PackageHandler:
 
         except subprocess.CalledProcessError as ex:
             self.logger.error(
-                f"ERROR: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
+                f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
             )
-            self.logger.error("Standard Error:")
+            self.logger.error("[Error]: Standard Error:")
             self.logger.error(ex.stderr)
             exit(1)
         except PermissionError:
             self.logger.error(
-                "ERROR: Permission denied. Are you sure you have the necessary permissions to run this command?"
+                "[Error]: Permission denied. Are you sure you have the necessary permissions to run this command?"
             )
             exit(1)
         except Exception as ex:
-            self.logger.error(f"ERROR: An unexpected error occurred: {ex}")
+            self.logger.error(f"[Error]: An unexpected error occurred: {ex}")
             exit(1)
 
         output = result.stdout.splitlines()
@@ -534,12 +536,14 @@ class PackageHandler:
         for line in output:
             if line.startswith(self.config.config.get("architecture-wording")):
                 package_architecture = line.split(":")[1].strip()
-                self.logger.debug(f"Package architecture: {package_architecture}")
+                self.logger.debug(
+                    f"[Debug]: Package architecture: {package_architecture}"
+                )
                 break
 
         if not package_architecture:
             self.logger.error(
-                "ERROR: Couldn't find package architecture in the output. If the system language is not English, "
+                "[Error]: Couldn't find package architecture in the output. If the system language is not English, "
                 "change the value of `architecture-wording` in the config file with the correct architecture "
                 "name which you can find with the command `sudo pacman -Q --info PACKAGE`"
             )
@@ -574,7 +578,7 @@ class PackageHandler:
         try:
             response = self.web_scraper.fetch_page_content(url)
             if not response:
-                self.logger.debug(f"No response received from {url}")
+                self.logger.debug(f"[Debug]: No response received from {url}")
                 return None
 
             old_lines = self.web_scraper.find_all_elements(
@@ -601,7 +605,7 @@ class PackageHandler:
 
             if not source_urls_old or not source_urls_new:
                 self.logger.debug(
-                    f"Couldn't find source nodes either for new or old in {url}"
+                    f"[Debug]: Couldn't find source nodes either for new or old in {url}"
                 )
                 return None
 
@@ -615,8 +619,8 @@ class PackageHandler:
                 # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
                 # We only need this segment: https://gitlab.freedesktop.org/pipewire/
                 if old_url and new_url:
-                    self.logger.debug(f"Source URL raw old: {old_url}")
-                    self.logger.debug(f"Source URL raw new: {new_url}")
+                    self.logger.debug(f"[Debug]: Source URL raw old: {old_url}")
+                    self.logger.debug(f"[Debug]: Source URL raw new: {new_url}")
 
                     if ".git" in old_url or ".git" in new_url:
                         match_url_old = re.search(r"https://.*(?=\.git)", old_url)
@@ -666,21 +670,29 @@ class PackageHandler:
                         match_tag_new = None
 
                     if match_url_old:
-                        self.logger.debug(f"Source URL old: {match_url_old.group(0)}")
+                        self.logger.debug(
+                            f"[Debug]: Source URL old: {match_url_old.group(0)}"
+                        )
                     else:
-                        self.logger.debug("Source URL old: None")
+                        self.logger.debug("[Debug]: Source URL old: None")
                     if match_url_new:
-                        self.logger.debug(f"Source URL new: {match_url_new.group(0)}")
+                        self.logger.debug(
+                            f"[Debug]: Source URL new: {match_url_new.group(0)}"
+                        )
                     else:
-                        self.logger.debug("Source URL new: None")
+                        self.logger.debug("[Debug]: Source URL new: None")
                     if match_tag_old:
-                        self.logger.debug(f"Source tag old: {match_tag_old.group(1)}")
+                        self.logger.debug(
+                            f"[Debug]: Source tag old: {match_tag_old.group(1)}"
+                        )
                     else:
-                        self.logger.debug("Source tag old: None")
+                        self.logger.debug("[Debug]: Source tag old: None")
                     if match_tag_new:
-                        self.logger.debug(f"Source tag new: {match_tag_new.group(1)}")
+                        self.logger.debug(
+                            f"[Debug]: Source tag new: {match_tag_new.group(1)}"
+                        )
                     else:
-                        self.logger.debug("Source tag new: None")
+                        self.logger.debug("[Debug]: Source tag new: None")
 
                     if match_url_old is not None and match_url_new is not None:
                         similarity = SequenceMatcher(
@@ -708,15 +720,17 @@ class PackageHandler:
                     else:
                         return None
                 else:
-                    self.logger.debug(f"Couldn't extract either old_url or new_url")
+                    self.logger.debug(
+                        f"[Debug]: Couldn't extract either old_url or new_url"
+                    )
                     return None
             else:
-                self.logger.error(f"ERROR: Couldn't find 'source =' in {url}")
+                self.logger.error(f"[Error]: Couldn't find 'source =' in {url}")
                 return None
 
         except Exception as ex:
             self.logger.error(
-                f"ERROR: Unexpected error while processing URL {url}: {ex}"
+                f"[Error]: Unexpected error while processing URL {url}: {ex}"
             )
             return None
 
@@ -761,7 +775,7 @@ class PackageHandler:
         # repositories or the testing in the config file.
         if len(reachable_repository) > 1:
             self.logger.error(
-                "ERROR: Multiple repositories found. Please use either stable or testing in the config file."
+                "[Error]: Multiple repositories found. Please use either stable or testing in the config file."
             )
             exit(1)
         else:
@@ -778,7 +792,7 @@ class PackageHandler:
         """
         response = self.web_scraper.fetch_page_content(url)
         if not response:
-            self.logger.debug(f"No response received from {url}")
+            self.logger.debug(f"[Debug]: No response received from {url}")
             return None
 
         upstream_link = self.web_scraper.find_element(
@@ -786,10 +800,10 @@ class PackageHandler:
         )
         if upstream_link:
             upstream_url = upstream_link.find_next_sibling("td").find("a").get("href")
-            self.logger.debug(f"Package upstream URL: {upstream_url}")
+            self.logger.debug(f"[Debug]: Package upstream URL: {upstream_url}")
             return upstream_url
         else:
-            self.logger.error(f"ERROR: Couldn't find node 'Upstream URL:' on {url}")
+            self.logger.error(f"[Error]: Couldn't find node 'Upstream URL:' on {url}")
             return None
 
     def get_package_source_files_url(self, url: str) -> Optional[str]:
@@ -806,7 +820,7 @@ class PackageHandler:
         try:
             response = self.web_scraper.fetch_page_content(url)
             if not response:
-                self.logger.debug(f"No response received from {url}")
+                self.logger.debug(f"[Debug]: No response received from {url}")
                 return None
 
             source_file_link = self.web_scraper.find_element(
@@ -815,14 +829,16 @@ class PackageHandler:
 
             if source_file_link:
                 source_file_url = source_file_link.get("href")
-                self.logger.info(f"Arch 'Source Files' URL: {source_file_url}")
+                self.logger.info(f"[Info]: Arch 'Source Files' URL: {source_file_url}")
                 return source_file_url
             else:
-                self.logger.error(f"ERROR: Couldn't find node 'Source Files' on {url}")
+                self.logger.error(
+                    f"[Error]: Couldn't find node 'Source Files' on {url}"
+                )
                 return None
         except Exception as ex:
             self.logger.error(
-                f"ERROR: An unexpected error occurred while parsing the HTML: {ex}"
+                f"[Error]: An unexpected error occurred while parsing the HTML: {ex}"
             )
             return None
 
@@ -843,7 +859,7 @@ class PackageHandler:
         try:
             response = self.web_scraper.fetch_page_content(url)
             if not response:
-                self.logger.debug(f"No response received from {url}")
+                self.logger.debug(f"[Debug]: No response received from {url}")
                 return None
 
             if "github" in url:
@@ -868,12 +884,14 @@ class PackageHandler:
                 )
 
                 if not release_tags_raw:
+                    self.logger.debug(f"[Debug]: No raw release tags found in {url}")
                     return None
 
                 release_tags = [tag.find_next("a").text for tag in release_tags_raw]
                 time_tags_raw = self.web_scraper.find_all_elements(response, "time")
 
                 if not time_tags_raw:
+                    self.logger.debug(f"[Debug]: No raw time tags found in {url}")
                     return None
 
             time_tags = [tag["datetime"] for tag in time_tags_raw]
@@ -885,14 +903,14 @@ class PackageHandler:
                 # In order to make a tag compare on GitLab, transform '1:' to '1-'
                 transformed_release = release.replace("1:", "1-")
                 self.logger.debug(
-                    f"Release tag: {transformed_release} Time tag: {time}"
+                    f"[Debug]: Release tag: {transformed_release} Time tag: {time}"
                 )
                 combined_info[index] = (transformed_release, time)
 
             return combined_info
         except Exception as ex:
             self.logger.error(
-                f"ERROR: An unexpected error occurred while parsing the HTML or extracting tag information: {ex}"
+                f"[Error]: An unexpected error occurred while parsing the HTML or extracting tag information: {ex}"
             )
             return None
 
@@ -1053,11 +1071,11 @@ class PackageHandler:
 
                     if closest_match_current_tag:
                         self.logger.debug(
-                            f"Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag[0]}"
+                            f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag[0]}"
                         )
                     else:
                         self.logger.debug(
-                            f"No similar tag for {current_tag} found in the upstream package repository"
+                            f"[Debug]: No similar tag for {current_tag} found in the upstream package repository"
                         )
 
                 if new_tag or override_shown_tag not in upstream_package_tags:
@@ -1068,11 +1086,11 @@ class PackageHandler:
 
                     if closest_match_new_tag:
                         self.logger.debug(
-                            f"Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag[0]}"
+                            f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag[0]}"
                         )
                     else:
                         self.logger.debug(
-                            f"No similar tag for {new_tag_to_check} found in the upstream package repository"
+                            f"[Debug]: No similar tag for {new_tag_to_check} found in the upstream package repository"
                         )
 
                 # GitHub compare tags url: https://github.com/user/repo/compare/v1.0.0...v2.0.0
@@ -1087,7 +1105,9 @@ class PackageHandler:
                     f"{(closest_match_new_tag or [new_tag])[0]}"
                 )
             else:
-                self.logger.debug(f"No upstream package tags found for {source}")
+                self.logger.debug(
+                    f"[Debug]: No upstream package tags found for {source}"
+                )
 
         if not compare_tags_url:
             compare_tags_url = (
@@ -1096,11 +1116,11 @@ class PackageHandler:
                 else f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
             )
 
-        self.logger.debug(f"Compare tags URL: {compare_tags_url}")
+        self.logger.debug(f"[Debug]: Compare tags URL: {compare_tags_url}")
 
         response = self.web_scraper.fetch_page_content(compare_tags_url)
         if response is None:
-            self.logger.debug(f"No response received from {compare_tags_url}")
+            self.logger.debug(f"[Debug]: No response received from {compare_tags_url}")
             return None
 
         # TODO: If the source hosting site is Github which can display commits only on multiple pages, how
@@ -1121,7 +1141,7 @@ class PackageHandler:
 
         if not commits:
             self.logger.debug(
-                f"No commit messages found in the response from {compare_tags_url}"
+                f"[Debug]: No commit messages found in the response from {compare_tags_url}"
             )
             return None
 
@@ -1211,21 +1231,21 @@ class PackageHandler:
 
                     if kde_category:
                         kde_category_found = True
-                        self.logger.debug(f"KDE category: {kde_category}")
+                        self.logger.debug(f"[Debug]: KDE category: {kde_category}")
                         break
                 case 1:
                     kde_category_url = "https://apps.kde.org/" + package_name
 
                     if not self.web_scraper.check_website_availabilty(kde_category_url):
                         self.logger.debug(
-                            f"Website: {kde_category_url} is not reachable"
+                            f"[Debug]: Website: {kde_category_url} is not reachable"
                         )
                         break
 
                     response = self.web_scraper.fetch_page_content(kde_category_url)
                     if not response:
                         self.logger.debug(
-                            f"No response received from {kde_category_url} while getting the KDE package changelog"
+                            f"[Debug]: No response received from {kde_category_url} while getting the KDE package changelog"
                         )
                         break
 
@@ -1236,11 +1256,11 @@ class PackageHandler:
                     if kde_category_raw:
                         kde_category = kde_category_raw.text.strip()
                         kde_category_found = True
-                        self.logger.debug(f"KDE category: {kde_category}")
+                        self.logger.debug(f"[Debug]: KDE category: {kde_category}")
                         break
                     else:
                         self.logger.error(
-                            f"ERROR: Couldn't extract KDE package category from {kde_category_url}"
+                            f"[Error]: Couldn't extract KDE package category from {kde_category_url}"
                         )
 
         kde_gitlab_url = None
@@ -1252,7 +1272,9 @@ class PackageHandler:
                     )
 
             if not kde_gitlab_url:
-                self.logger.error(f"ERROR: Unknown KDE GitLab group in: {kde_category}")
+                self.logger.error(
+                    f"[Error]: Unknown KDE GitLab group in: {kde_category}"
+                )
         else:
             for category in kde_package_categories:
                 kde_gitlab_url = (
@@ -1270,7 +1292,7 @@ class PackageHandler:
                 response = self.web_scraper.fetch_page_content(kde_gitlab_url)
                 if not response:
                     self.logger.debug(
-                        f"No response received from {kde_gitlab_url} while getting the KDE package changelog"
+                        f"[Debug]: No response received from {kde_gitlab_url} while getting the KDE package changelog"
                     )
                     continue
 
@@ -1282,7 +1304,9 @@ class PackageHandler:
                     kde_package_name_extracted is not None
                     and package_name in kde_package_name_extracted.text
                 ):
-                    self.logger.debug(f"KDE GitLab package URL: {kde_gitlab_url}")
+                    self.logger.debug(
+                        f"[Debug]: KDE GitLab package URL: {kde_gitlab_url}"
+                    )
                     break
 
         if kde_gitlab_url:
@@ -1336,7 +1360,7 @@ class PackageHandler:
 
         if start_index is None or end_index is None:
             self.logger.error(
-                "ERROR: Intermediate tags. Either current_tag, new_tag or both were not found."
+                "[Error]: Intermediate tags. Either current_tag, new_tag or both were not found."
             )
             return None
 
