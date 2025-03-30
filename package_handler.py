@@ -4,7 +4,7 @@ from urllib.parse import urljoin, urlparse
 from web_scraper import WebScraper
 import re
 import subprocess
-from difflib import get_close_matches
+from difflib import get_close_matches, SequenceMatcher
 
 
 class PackageHandler:
@@ -547,17 +547,29 @@ class PackageHandler:
 
         return package_architecture
 
-    def get_arch_package_source_url(self, url):
-        """Extracts the source URL from an Arch source webpage (gitlab.archlinux.org) containing package information.
-        This function sends an HTTP GET request to the specified URL, parses the HTML content
-        to find a `<span>` tag containing the source URL of a package. It then extracts and
-        returns the source URL. The function specifically looks for the string 'source =' in
-        the `<span>` tag text and extracts the URL part before the final segment.
+    def get_arch_package_compare_information(self, url):
+        """Extracts the source URL and associated tag information from an Arch package compare webpage.
 
-        :param url: The URL of the webpage to retrieve and parse.
+        This function sends an HTTP GET request to the specified URL, parses the HTML content,
+        and searches for lines that start with "source = https" or "source = git+https". It then
+        extracts the source URLs for both the old and new package versions. Depending on the URL type,
+        it extracts a base URL segment and, if available, a version tag (e.g., "#tag=...").
+
+        The function computes a similarity ratio between the extracted base URLs using SequenceMatcher.
+        If the similarity is greater than or equal to 0.8, it returns a dictionary with the following keys:
+
+        - "new_source_url": The extracted new source URL.
+        - "old_source_url": The extracted old source URL.
+        - "new_source_tag": The extracted tag from the new URL (if available).
+        - "old_source_tag": The extracted tag from the old URL (if available).
+
+        If the HTTP request fails, no valid source URLs are found, or the similarity ratio is below the
+        threshold, the function returns None.
+
+        :param url: The compare URL of the Arch package.
         :type url: str
-        :return: The extracted source URL if found, otherwise None.
-        :rtype: Optional[str]
+        :return: A dictionary with extracted source URL and tag information, or None if valid data could not be extracted.
+        :rtype: Optional[dict]
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
@@ -565,82 +577,143 @@ class PackageHandler:
                 self.logger.debug(f"No response received from {url}")
                 return None
 
-            source_urls = self.web_scraper.find_all_elements(
-                response, None, string=lambda text: "source =" in text
+            old_lines = self.web_scraper.find_all_elements(
+                response, "tr", class_="line_holder old"
             )
 
-            if not source_urls:
-                self.logger.debug(f"Couldn't find a source node in {url}")
+            new_lines = self.web_scraper.find_all_elements(
+                response, "tr", class_="line_holder new"
+            )
+
+            source_urls_old = [
+                line.get_text(strip=True)
+                for line in old_lines
+                if line.text.strip().startswith("source = https")
+                or line.text.strip().startswith("source = git+https")
+            ]
+
+            source_urls_new = [
+                line.get_text(strip=True)
+                for line in new_lines
+                if line.text.strip().startswith("source = https")
+                or line.text.strip().startswith("source = git+https")
+            ]
+
+            if not source_urls_old or not source_urls_new:
+                self.logger.debug(
+                    f"Couldn't find source nodes either for new or old in {url}"
+                )
                 return None
 
-            for source_url in source_urls:
-                source_url = source_url.get_text(strip=True)
-                self.logger.debug(f"Source URL raw: {source_url}")
+            max_length = max(len(source_urls_old), len(source_urls_new))
 
-                # 'source_url' could extract something like this:
+            for i in range(max_length):
+                old_url = source_urls_old[i] if i < len(source_urls_old) else None
+                new_url = source_urls_new[i] if i < len(source_urls_new) else None
+
+                # 'old_url' or `new_url` could extract something like this:
                 # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
                 # We only need this segment: https://gitlab.freedesktop.org/pipewire/
-                if ".git" in source_url:
-                    match = re.search(r"https://.*(?=\.git)", source_url)
-                else:
-                    match = re.search(r"https://.*?(?=#|$)", source_url)
+                if old_url and new_url:
+                    self.logger.debug(f"Source URL raw old: {old_url}")
+                    self.logger.debug(f"Source URL raw new: {new_url}")
 
-                if match:
-                    source_url = match.group(0)
-                    self.logger.debug(f"Source URL: {source_url}")
-                    return source_url
+                    if ".git" in old_url or ".git" in new_url:
+                        match_url_old = re.search(r"https://.*(?=\.git)", old_url)
+                        match_url_new = re.search(r"https://.*(?=\.git)", new_url)
+                    elif "github" in old_url or "github" in new_url:
+                        # The URL could look like this:
+                        # https://github.com/abseil/abseil-cpp/archive/20250127.0/abseil-cpp-20250127.0.tar.gz
+                        # We only want to extract: https://github.com/abseil/abseil-cpp/
+                        match_url_old = re.search(
+                            r"https://github\.com/[^/]+/[^/]+/", old_url
+                        )
+                        match_url_new = re.search(
+                            r"https://github\.com/[^/]+/[^/]+/", new_url
+                        )
+                    else:
+                        match_url_old = re.search(r"https://.*?(?=#|$)", old_url)
+                        match_url_new = re.search(r"https://.*?(?=#|$)", new_url)
+
+                    if ("gitlab" in old_url or "git+" in old_url) or (
+                        "gitlab" in new_url or "git+" in new_url
+                    ):
+                        # The URL could look like this:
+                        # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
+                        # We only need this segment: "1.2.3"
+                        match_tag_old = re.search(r"#tag=([^\?]+)", old_url)
+                        match_tag_new = re.search(r"#tag=([^\?]+)", new_url)
+                    elif "github" in old_url or "github" in new_url:
+                        # The URL could look like this:
+                        # git+https://github.com/docker/cli.git#tag=v28.0.1
+                        match_tag_old = re.search(r"#tag=([^\?]+)", old_url)
+                        match_tag_new = re.search(r"#tag=([^\?]+)", new_url)
+
+                        # or:
+                        # https://github.com/libusb/libusb/releases/download/v1.0.28/...
+                        # https://github.com/abseil/abseil-cpp/archive/20250127.0/...
+                        if not match_tag_old:
+                            match_tag_old = re.search(
+                                r"/(?:download|archive)/([^/]+)", old_url
+                            )
+
+                        if not match_tag_new:
+                            match_tag_new = re.search(
+                                r"/(?:download|archive)/([^/]+)", new_url
+                            )
+                    else:
+                        match_tag_old = None
+                        match_tag_new = None
+
+                    if match_url_old:
+                        self.logger.debug(f"Source URL old: {match_url_old.group(0)}")
+                    else:
+                        self.logger.debug("Source URL old: None")
+                    if match_url_new:
+                        self.logger.debug(f"Source URL new: {match_url_new.group(0)}")
+                    else:
+                        self.logger.debug("Source URL new: None")
+                    if match_tag_old:
+                        self.logger.debug(f"Source tag old: {match_tag_old.group(1)}")
+                    else:
+                        self.logger.debug("Source tag old: None")
+                    if match_tag_new:
+                        self.logger.debug(f"Source tag new: {match_tag_new.group(1)}")
+                    else:
+                        self.logger.debug("Source tag new: None")
+
+                    if match_url_old is not None and match_url_new is not None:
+                        similarity = SequenceMatcher(
+                            None, match_url_old.group(0), match_url_new.group(0)
+                        ).ratio()
+                    else:
+                        similarity = 0.0
+
+                    # Both URL's are similar
+                    if similarity >= 0.8:
+                        return {
+                            "new_source_url": (
+                                match_url_new.group(0) if match_url_new else None
+                            ),
+                            "old_source_url": (
+                                match_url_old.group(0) if match_url_old else None
+                            ),
+                            "new_source_tag": (
+                                match_tag_new.group(1) if match_tag_new else None
+                            ),
+                            "old_source_tag": (
+                                match_tag_old.group(1) if match_tag_old else None
+                            ),
+                        }
+                    else:
+                        return None
                 else:
-                    self.logger.error(f"ERROR: Couldn't find 'source =' in {url}")
+                    self.logger.debug(f"Couldn't extract either old_url or new_url")
                     return None
-        except Exception as ex:
-            self.logger.error(
-                f"ERROR: Unexpected error while processing URL {url}: {ex}"
-            )
-            return None
-
-    def get_arch_package_source_tag(self, url):
-        """Extracts the source tag from an Arch source webpage (gitlab.archlinux.org) containing package information.
-        This function sends an HTTP GET request to the specified URL, parses the HTML content
-        to find a `<span>` tag containing the source URL of a package. It then extracts and
-        returns the source URL. The function specifically looks for the string 'source =' in
-        the `<span>` tag text and extracts the URL part before the final segment.
-
-        :param url: The URL of the webpage to retrieve and parse.
-        :type param: str
-        :return: The extracted source URL if found, otherwise None.
-        :rtype: Optional[str]
-        """
-        try:
-            response = self.web_scraper.fetch_page_content(url)
-            if not response:
-                self.logger.debug(f"No response received from {url}")
+            else:
+                self.logger.error(f"ERROR: Couldn't find 'source =' in {url}")
                 return None
 
-            source_urls = self.web_scraper.find_all_elements(
-                response, None, string=lambda text: "source =" in text
-            )
-
-            if not source_urls:
-                self.logger.debug(f"Couldn't find a source node in {url}")
-                return None
-
-            for source_url in source_urls:
-                source_url = source_url.get_text(strip=True)
-
-                # 'source_url' could extract something like this:
-                # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
-                # We only need this segment: https://gitlab.freedesktop.org/pipewire/
-                match = re.search(r"#tag=([^\?]+)", source_url)
-
-                if match:
-                    source_tag = match.group(1)
-                    self.logger.info(f"Source tag: {source_tag}")
-                    return source_tag
-                else:
-                    self.logger.error(
-                        f"ERROR: Couldn't find information 'tag=' in node 'source =' in {url}"
-                    )
-                    return None
         except Exception as ex:
             self.logger.error(
                 f"ERROR: Unexpected error while processing URL {url}: {ex}"
@@ -887,43 +960,37 @@ class PackageHandler:
                     package_changelog += package_changelog_temp
 
             case _:
-                current_tag_url = (
-                    package_source_files_url
-                    + "/-/blob/"
-                    + package.current_version_altered
-                    + "/.SRCINFO"
+                # Example:
+                # https://gitlab.archlinux.org/archlinux/packaging/packages/abseil-cpp/-/compare/20240722.1-1...20250127.0-1
+                compare_tags_url = (
+                    f"{package_source_files_url}/compare/{current_tag}...{new_tag}"
                 )
-                new_tag_url = (
-                    package_source_files_url
-                    + "/-/blob/"
-                    + package.new_version_altered
-                    + "/.SRCINFO"
+
+                arch_package_information = self.get_arch_package_compare_information(
+                    compare_tags_url
                 )
-                # https://gitlab.archlinux.org/archlinux/packaging/packages/pipewire/-/blob/1-1.2.3-1/.SRCINFO
-                self.logger.debug(f"Current tag URL: {current_tag_url}")
-                self.logger.debug(f"New tag URL: {new_tag_url}")
 
-                first_source_url = self.get_arch_package_source_url(current_tag_url)
-                second_source_url = self.get_arch_package_source_url(new_tag_url)
-                first_source_tag = self.get_arch_package_source_tag(current_tag_url)
-                second_source_tag = self.get_arch_package_source_tag(new_tag_url)
+                if arch_package_information is None:
+                    return None
 
-                if first_source_url != second_source_url:
-                    return package_changelog if package_changelog else None
+                new_source_url = arch_package_information["new_source_url"]
+                old_source_url = arch_package_information["old_source_url"]
+                new_source_tag = arch_package_information["new_source_tag"]
+                old_source_tag = arch_package_information["old_source_tag"]
 
                 if all(
                     x is not None
                     for x in [
-                        first_source_url,
-                        second_source_url,
-                        first_source_tag,
-                        second_source_tag,
+                        new_source_url,
+                        old_source_url,
+                        new_source_tag,
+                        old_source_tag,
                     ]
                 ):
                     package_changelog_temp = self.get_changelog_compare_package_tags(
-                        first_source_url,
-                        first_source_tag,
-                        second_source_tag,
+                        new_source_url,
+                        old_source_tag,
+                        new_source_tag,
                         package_name,
                         "major",
                         override_shown_tag,
