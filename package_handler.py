@@ -597,13 +597,13 @@ class PackageHandler:
 
             for line in old_lines:
                 text = line.get_text(strip=True)
-                match = re.search(r'(https://).*', text)
+                match = re.search(r"(https://).*", text)
                 if match:
                     source_urls_old.append(match.group(0))
 
             for line in new_lines:
                 text = line.get_text(strip=True)
-                match = re.search(r'(https://).*', text)
+                match = re.search(r"(https://).*", text)
                 if match:
                     source_urls_new.append(match.group(0))
 
@@ -629,10 +629,14 @@ class PackageHandler:
                     # Handle URL's
                     #
                     if ".git" in old_url or ".git" in new_url:
-                        match_url_old = re.search(r"https://.*(?=\.git)", old_url)
-                        match_url_new = re.search(r"https://.*(?=\.git)", new_url)
+                        # The URL could look like this:
+                        # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
+                        # We only want to extract: https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git
+                        match_url_old = re.search(r"https://.*?\.git", old_url)
+                        match_url_new = re.search(r"https://.*?\.git", new_url)
                     elif "github" in old_url or "github" in new_url:
                         # The URL could look like this:
+                        # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
                         # https://github.com/abseil/abseil-cpp/archive/20250127.0/abseil-cpp-20250127.0.tar.gz
                         # We only want to extract: https://github.com/abseil/abseil-cpp/
                         match_url_old = re.search(
@@ -989,12 +993,12 @@ class PackageHandler:
             case _:
                 # Example:
                 # https://gitlab.archlinux.org/archlinux/packaging/packages/abseil-cpp/-/compare/20240722.1-1...20250127.0-1
-                compare_tags_url = (
+                compare_arch_tags_url = (
                     f"{package_source_files_url}/compare/{current_tag}...{new_tag}"
                 )
 
                 arch_package_information = self.get_arch_package_compare_information(
-                    compare_tags_url
+                    compare_arch_tags_url
                 )
 
                 if arch_package_information is None:
@@ -1119,11 +1123,18 @@ class PackageHandler:
                 )
 
         if not compare_tags_url:
-            compare_tags_url = (
-                f"{source.rstrip('/')}/compare/{current_tag}...{new_tag}"
-                if "github" in source
-                else f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
-            )
+            if "github" in source:
+                compare_tags_url = (
+                    f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
+                )
+            elif "git.kernel.org" in source:
+                # Example:
+                # https://web.git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git/log/?id=v34.1&id2=v34
+                compare_tags_url = f"{source}/log/?id={new_tag}&id2={current_tag}"
+            else:
+                compare_tags_url = (
+                    f"{source.rstrip('/')}/compare/{current_tag}...{new_tag}"
+                )
 
         self.logger.debug(f"[Debug]: Compare tags URL: {compare_tags_url}")
 
@@ -1146,7 +1157,12 @@ class PackageHandler:
             kwargs = "commit-row-message"
             tag = "a"
 
-        commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
+        if "git.kernel.org" in source:
+            commits = self.web_scraper.find_elements_between_two_elements(
+                response, "tr", new_tag, current_tag
+            )
+        else:
+            commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
 
         if not commits:
             self.logger.debug(
@@ -1154,9 +1170,14 @@ class PackageHandler:
             )
             return None
 
-        commit_messages = [commit.get_text(strip=True) for commit in commits]
+        if "git.kernel.org" in source:
+            commit_messages = [
+                commit.find("a").get_text(strip=True) for commit in commits
+            ]
+        else:
+            commit_messages = [commit.get_text(strip=True) for commit in commits]
 
-        if "github" in source:
+        if "github" in source or "git.kernel.org" in source:
             commit_urls = [
                 urljoin(source, commit.find("a")["href"]) for commit in commits
             ]

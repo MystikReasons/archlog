@@ -71,6 +71,43 @@ class WebScraper:
         soup = BeautifulSoup(content, "html.parser")
         return soup.find(tag, **kwargs)
 
+    def find_elements_between_two_elements(
+        self, content: str, row_designator: str, start_element: str, end_element: str
+    ) -> List[Tag]:
+        """Finds all elements between two specified text markers within the given HTML content.
+
+        Parses the HTML and collects all elements matching the row_designator that appear
+        after the start_element and before the end_element.
+
+        :param content: The HTML content to be parsed.
+        :type content: str
+        :param row_designator: Tag name used to select rows (e.g. 'tr', 'div').
+        :type row_designator: str
+        :param start_element: Text content that marks the start of the selection.
+        :type start_element: str
+        :param end_element: Text content that marks the end of the selection.
+        :type end_element: str
+        :return: List of elements found between the start and end markers.
+        :rtype: List[Tag]
+        """
+        soup = BeautifulSoup(content, "html.parser")
+        rows = soup.find_all(row_designator)
+
+        start_collecting = False
+        result_rows = []
+
+        for row in rows:
+            if not start_collecting and row.find(string=start_element):
+                start_collecting = True
+
+            if start_collecting and row.find(string=end_element):
+                break
+
+            if start_collecting:
+                result_rows.append(row)
+
+        return result_rows
+
     def check_website_availabilty(self, url: str) -> bool:
         """Checks the availability of a website by sending an HTTP GET request.
         This function sends a GET request to the specified URL and checks the HTTP status code of the response.
