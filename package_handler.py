@@ -643,10 +643,10 @@ class PackageHandler:
                         # https://github.com/abseil/abseil-cpp/archive/20250127.0/abseil-cpp-20250127.0.tar.gz
                         # We only want to extract: https://github.com/abseil/abseil-cpp/
                         match_url_old = re.search(
-                            r"https://github\.com/[^/]+/[^/]+/", old_url
+                            r"https://github\.com/[^/]+/[^/?]+", old_url
                         )
                         match_url_new = re.search(
-                            r"https://github\.com/[^/]+/[^/]+/", new_url
+                            r"https://github\.com/[^/]+/[^/?]+", new_url
                         )
                     else:
                         match_url_old = re.search(r"https://.*?(?=#|$)", old_url)
@@ -659,6 +659,7 @@ class PackageHandler:
                     ):
                         # The URL could look like this:
                         # https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
+                        # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
                         # We only need this segment: "1.2.3"
                         match_tag_old = re.search(r"#tag=([^\?]+)", old_url)
                         match_tag_new = re.search(r"#tag=([^\?]+)", new_url)
