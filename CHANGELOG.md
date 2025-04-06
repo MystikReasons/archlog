@@ -10,6 +10,7 @@
 - **Entire Script** Refactor: Standardize logging output across all files
 - **Package Handler** Refactor: Simplified package source url old and new
 - **Package Handler** Added the ability to get the changelog for git.kernel.org packages
+- **Web Scraper** Refactor: Added and updated docstrings and type annotations
 
 ### Bug fixes
 

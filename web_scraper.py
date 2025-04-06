@@ -1,4 +1,4 @@
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError
 from bs4 import BeautifulSoup
@@ -7,12 +7,25 @@ import requests
 
 class WebScraper:
     def __init__(self, logger, config: Optional[Dict[str, Any]]) -> None:
+        """Constructor method"""
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=True)
         self.logger = logger
         self.config = config
 
-    def fetch_page_content(self, url, retries=3):
+    def fetch_page_content(self, url: str, retries: int = 3) -> Optional[str]:
+        """Fetches the full HTML content of a page using Playwright with retry logic.
+
+        Creates a new browser context and navigates to the given URL.
+        Retries the request on timeout or other errors, up to the specified number of attempts.
+
+        :param url: The target URL to fetch content from.
+        :type url: str
+        :param retries: Number of retry attempts in case of failure.
+        :type retries: int
+        :return: HTML content of the page as a string, or None if all attempts fail.
+        :rtype: Optional[str]
+        """
         attempt = 0
         while attempt < retries:
             try:
@@ -47,33 +60,43 @@ class WebScraper:
         )
         return None
 
-    def find_all_elements(self, content, tag=None, **kwargs):
-        """
-        Finds all elements in the HTML content based on the specified tag and additional attributes.
+    def find_all_elements(
+        self, content: str, tag: Optional[str] = None, **kwargs: Any
+    ) -> List:
+        """Finds all elements in the HTML content based on the specified tag and additional attributes.
 
         :param content: The HTML content to be parsed.
+        :type content: str
         :param tag: The HTML tag that is being searched for (e.g. 'p', 'span', etc.).
+        :type tag: Optional[str]
         :param kwargs: Additional attributes that are searched for (e.g. class_, id, attrs, etc.).
-        :return: A list of the elements found.
+        :type kwargs: Any
+        :return: A list of matched elements.
+        :rtype: List
         """
         soup = BeautifulSoup(content, "html.parser")
         return soup.find_all(tag, **kwargs)
 
-    def find_element(self, content, tag=None, **kwargs):
-        """
-        Finds an element in the HTML content based on the specified tag and additional attributes.
+    def find_element(
+        self, content: str, tag: Optional[str] = None, **kwargs: Any
+    ) -> Optional:
+        """Finds an element in the HTML content based on the specified tag and additional attributes.
 
         :param content: The HTML content to be parsed.
+        :type content: str
         :param tag: The HTML tag that is being searched for (e.g. 'p', 'span', etc.).
+        :type tag: Optional[str]
         :param kwargs: Additional attributes that are searched for (e.g. class_, id, attrs, etc.).
-        :return: A single element which was found.
+        :type kwargs: Any
+        :return: The first matched element or None if no match is found.
+        :rtype: Optional
         """
         soup = BeautifulSoup(content, "html.parser")
         return soup.find(tag, **kwargs)
 
     def find_elements_between_two_elements(
         self, content: str, row_designator: str, start_element: str, end_element: str
-    ) -> List[Tag]:
+    ) -> List:
         """Finds all elements between two specified text markers within the given HTML content.
 
         Parses the HTML and collects all elements matching the row_designator that appear
@@ -88,7 +111,7 @@ class WebScraper:
         :param end_element: Text content that marks the end of the selection.
         :type end_element: str
         :return: List of elements found between the start and end markers.
-        :rtype: List[Tag]
+        :rtype: List
         """
         soup = BeautifulSoup(content, "html.parser")
         rows = soup.find_all(row_designator)
@@ -118,8 +141,6 @@ class WebScraper:
         :type url: str
         :return: True if the website is reachable (status code 200), otherwise False.
         :rtype: bool
-        :raises requests.RequestException: If an error occurs during the HTTP request.
-            This includes network errors, invalid URLs, or issues with the request itself.
         """
         try:
             response = requests.get(url)
@@ -137,6 +158,12 @@ class WebScraper:
             )
             return False
 
-    def close_browser(self):
+    def close_browser(self) -> None:
+        """
+        Closes the browser instance and stops the Playwright process.
+
+        :return: None
+        :rtype: None
+        """
         self.browser.close()
         self.playwright.stop()
