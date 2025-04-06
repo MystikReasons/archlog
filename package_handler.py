@@ -654,8 +654,8 @@ class PackageHandler:
 
                     # Handle tags
                     #
-                    if ("gitlab" in old_url or "git+" in old_url) or (
-                        "gitlab" in new_url or "git+" in new_url
+                    if ("gitlab" in old_url or "git." in old_url) or (
+                        "gitlab" in new_url or "git." in new_url
                     ):
                         # The URL could look like this:
                         # https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
