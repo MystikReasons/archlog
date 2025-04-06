@@ -8,6 +8,7 @@
 - **Package Handler** Refactored package tag parsing using split_package_tag and using them too with KDE packages
 - **Package Handler** Refactor: Consolidate two functions regarding getting source url and source tag into one
 - **Entire Script** Refactor: Standardize logging output across all files
+- **Package Handler** Refactor: Simplified package source url old and new
 
 ### Bug fixes
 

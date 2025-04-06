@@ -589,19 +589,23 @@ class PackageHandler:
                 response, "tr", class_="line_holder new"
             )
 
-            source_urls_old = [
-                line.get_text(strip=True)
-                for line in old_lines
-                if line.text.strip().startswith("source = https")
-                or line.text.strip().startswith("source = git+https")
-            ]
+            # Example on how the URL's could look like:
+            # source = expat::git+https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
+            #
+            source_urls_old = []
+            source_urls_new = []
 
-            source_urls_new = [
-                line.get_text(strip=True)
-                for line in new_lines
-                if line.text.strip().startswith("source = https")
-                or line.text.strip().startswith("source = git+https")
-            ]
+            for line in old_lines:
+                text = line.get_text(strip=True)
+                match = re.search(r'(https://).*', text)
+                if match:
+                    source_urls_old.append(match.group(0))
+
+            for line in new_lines:
+                text = line.get_text(strip=True)
+                match = re.search(r'(https://).*', text)
+                if match:
+                    source_urls_new.append(match.group(0))
 
             if not source_urls_old or not source_urls_new:
                 self.logger.debug(
@@ -616,12 +620,14 @@ class PackageHandler:
                 new_url = source_urls_new[i] if i < len(source_urls_new) else None
 
                 # 'old_url' or `new_url` could extract something like this:
-                # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
+                # https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
                 # We only need this segment: https://gitlab.freedesktop.org/pipewire/
                 if old_url and new_url:
                     self.logger.debug(f"[Debug]: Source URL raw old: {old_url}")
                     self.logger.debug(f"[Debug]: Source URL raw new: {new_url}")
 
+                    # Handle URL's
+                    #
                     if ".git" in old_url or ".git" in new_url:
                         match_url_old = re.search(r"https://.*(?=\.git)", old_url)
                         match_url_new = re.search(r"https://.*(?=\.git)", new_url)
@@ -639,17 +645,20 @@ class PackageHandler:
                         match_url_old = re.search(r"https://.*?(?=#|$)", old_url)
                         match_url_new = re.search(r"https://.*?(?=#|$)", new_url)
 
+                    # Handle tags
+                    #
                     if ("gitlab" in old_url or "git+" in old_url) or (
                         "gitlab" in new_url or "git+" in new_url
                     ):
                         # The URL could look like this:
-                        # git+https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
+                        # https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
                         # We only need this segment: "1.2.3"
                         match_tag_old = re.search(r"#tag=([^\?]+)", old_url)
                         match_tag_new = re.search(r"#tag=([^\?]+)", new_url)
                     elif "github" in old_url or "github" in new_url:
                         # The URL could look like this:
-                        # git+https://github.com/docker/cli.git#tag=v28.0.1
+                        # https://github.com/docker/cli.git#tag=v28.0.1
+                        # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
                         match_tag_old = re.search(r"#tag=([^\?]+)", old_url)
                         match_tag_new = re.search(r"#tag=([^\?]+)", new_url)
 
