@@ -551,7 +551,9 @@ class PackageHandler:
 
         return package_architecture
 
-    def get_arch_package_compare_information(self, url):
+    def get_arch_package_compare_information(
+        self, url: str
+    ) -> Optional[Dict[str, Optional[str]]]:
         """Extracts the source URL and associated tag information from an Arch package compare webpage.
 
         This function sends an HTTP GET request to the specified URL, parses the HTML content,
@@ -560,7 +562,7 @@ class PackageHandler:
         it extracts a base URL segment and, if available, a version tag (e.g., "#tag=...").
 
         The function computes a similarity ratio between the extracted base URLs using SequenceMatcher.
-        If the similarity is greater than or equal to 0.8, it returns a dictionary with the following keys:
+        If the similarity is >= 0.8, it returns a dictionary with the following keys:
 
         - "new_source_url": The extracted new source URL.
         - "old_source_url": The extracted old source URL.
@@ -572,8 +574,9 @@ class PackageHandler:
 
         :param url: The compare URL of the Arch package.
         :type url: str
-        :return: A dictionary with extracted source URL and tag information, or None if valid data could not be extracted.
-        :rtype: Optional[dict]
+        :return: Dict with keys: 'new_source_url', 'old_source_url', 'new_source_tag', 'old_source_tag',
+             or None if extraction fails or similarity is too low.
+        :rtype: Optional[Dict[str, Optional[str]]]
         """
         try:
             response = self.web_scraper.fetch_page_content(url)
