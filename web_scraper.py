@@ -26,10 +26,18 @@ class WebScraper:
         :return: HTML content of the page as a string, or None if all attempts fail.
         :rtype: Optional[str]
         """
+        user_agent = (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/127.0.0.0 Safari/537.36"
+        )
+
         attempt = 0
         while attempt < retries:
             try:
-                context = self.browser.new_context(locale="en-US")
+                context = self.browser.new_context(
+                    locale="en-US", user_agent=user_agent
+                )
 
                 page = context.new_page()
                 page.goto(url, timeout=60000)
