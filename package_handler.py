@@ -4,6 +4,7 @@ from urllib.parse import urljoin, urlparse
 from web_scraper import WebScraper
 import re
 import subprocess
+import shutil
 from difflib import get_close_matches, SequenceMatcher
 
 
@@ -59,43 +60,43 @@ class PackageHandler:
         :return: A list of upgradable package names. Each entry in the list is a string.
         :rtype: List[str]
         """
-        try:
-            # Update the local mirror
-            subprocess.run(
-                ["sudo", "pacman", "-Sy"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,  # This will prevent the output from doing this: "b'PACKAGE"
-                check=True,  # This will raise an exception if the command fails
-            )
-
-            # Get the list of upgradable packages
-            update_process = subprocess.run(
-                ["sudo", "pacman", "-Qu"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,  # This will prevent the output from doing this: "b'PACKAGE"
-                check=True,  # This will raise an exception if the command fails
-            )
-
-            packages_to_update = update_process.stdout.splitlines()
-            packages_to_update = self.split_package_information(packages_to_update)
-            return packages_to_update
-        except subprocess.CalledProcessError as ex:
+        if shutil.which("checkupdates") is None:
             self.logger.error(
-                f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
-            )
-            self.logger.error("[Error]: Standard Error:")
-            self.logger.error(ex.stderr)
-            exit()
-        except PermissionError:
-            self.logger.error(
-                "[Error]: Permission denied. Are you sure you have the necessary permissions to run this command?"
+                f(
+                    """[Error]: Command 'checkupdates' is not available. 
+                Install the package 'pacman-contrib' to use this program."""
+                )
             )
             exit()
-        except Exception as ex:
-            self.logger.error(f"[Error]: An unexpected error occurred: {ex}")
-            exit()
+        else:
+            try:
+                # Get the list of upgradable packages
+                update_process = subprocess.run(
+                    ["checkupdates"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,  # This will prevent the output from doing this: "b'PACKAGE"
+                    check=True,  # This will raise an exception if the command fails
+                )
+
+                packages_to_update = update_process.stdout.splitlines()
+                packages_to_update = self.split_package_information(packages_to_update)
+                return packages_to_update
+            except subprocess.CalledProcessError as ex:
+                self.logger.error(
+                    f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
+                )
+                self.logger.error("[Error]: Standard Error:")
+                self.logger.error(ex.stderr)
+                exit()
+            except PermissionError:
+                self.logger.error(
+                    "[Error]: Permission denied. Are you sure you have the necessary permissions to run this command?"
+                )
+                exit()
+            except Exception as ex:
+                self.logger.error(f"[Error]: An unexpected error occurred: {ex}")
+                exit()
 
     def split_package_information(self, packages: List[str]) -> List[namedtuple]:
         """Splits package information into a list of namedtuples with detailed version information.

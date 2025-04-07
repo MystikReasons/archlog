@@ -11,7 +11,8 @@
 - **Package Handler** Refactor: Simplified package source url old and new
 - **Package Handler** Added the ability to get the changelog for git.kernel.org packages
 - **Web Scraper** Refactor: Added and updated docstrings and type annotations
-- **Web Scraper** Added custom user agent to better avoid bot-detection when using playwright 
+- **Web Scraper** Added custom user agent to better avoid bot-detection when using playwright
+- **Package Handler** Replaced `pacman -Sy` and `pacman -Qu` commands with `checkupdates`
 
 ### Bug fixes
 
