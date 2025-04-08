@@ -1,0 +1,46 @@
+[tool.black]
+line-length = 120
+
+[build-system]
+requires = ["setuptools>=78.1.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "archlog"
+version = "1.0.5"
+description = "View and track Arch Linux package changelogs with version and upstream updates"
+keywords = ["arch", "archlinux", "changelog", "packages", "pacman", "version-tracking", "linux", "tag"]
+readme = "README.md"
+authors = [
+  { name="MystikReasons" },
+]
+maintainers = [
+    { name = "MystikReasons" },
+]
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4==4.13.3",
+    "requests==2.32.2",
+    "playwright==1.51.0",
+]
+optional-dependencies = { dev = [
+    "black==25.1.0",
+    "flake8==7.1.2",
+    "setuptools>=78.1.0",
+] }
+
+[project.urls]
+Homepage = "https://github.com/MystikReasons/arch-changelog-viewer"
+Documentation = "https://github.com/MystikReasons/arch-changelog-viewer"
+Repository = "https://github.com/MystikReasons/arch-changelog-viewer.git"
+Issues = "https://github.com/MystikReasons/arch-changelog-viewer/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.package-data]
+"archlog" = ["_resources/**/*"]
+
+[project.scripts]
+archlog = "archlog.__main__:main"
