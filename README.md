@@ -1,14 +1,13 @@
-# Arch Linux changelog viewer
+# archlog
 
 ## Description
-The Arch Linux changelog viewer is a simple Python script which gets the upgradable Arch packages and tries to get for each package individually the changelog.
-The script differentiates between a minor Arch release and a major Arch release.
+archlog is a simple Python CLI tool that fetches upgradable official Arch Linux packages and retrieves changelogs for each.
+It distinguishes between minor and major Arch package updates.
 
-The minor Arch release typically only contains some commits on the Arch package source hosting website.
+* Minor updates usually contain only Arch-specific changes (e.g., rebuilds, packaging changes).
+* Major updates include both Arch-specific commits and upstream version changes (e.g., new Firefox version).
 
-The major Arch release typically contains some commits on the Arch package source hosting website and an upgrade of the origin package (for example Firefox).
-
-This script does currently only work with offical Arch packages, Flatpack, AUR etc. are not supported
+Currently, only official Arch packages are supported. AUR, Flatpak, and other sources are not supported.
 
 
 ### Minor release example
@@ -85,17 +84,70 @@ This script does currently only work with offical Arch packages, Flatpack, AUR e
 ```
 
 ## Installation
-- Clone or fork the repository
-- Only once: in the project folder run `pip install -r requirements.txt`
-    - If the environment is externally managed (default behaviour in Arch Linux) you need to install and enable the python virtual environment before running this command.
-        - Installation: `python -m venv venv/`
-        - Enabling the virtual environment: `source venv/bin/activate`
-- Run the program with `python main.py`
+
+You can either clone or download the repository manually:
+```bash
+git clone "https://github.com/MystikReasons/archlog.git"
+```
+
+Or download and extract via curl:
+```bash
+curl -L "https://github.com/MystikReasons/archlog/archive/refs/heads/master.zip" -o "./archlog.zip" && unzip "./archlog.zip" -d "./archlog" && rm -rf "./archlog.zip"
+```
+
+Then install the tool using (pipx needs to be installed on your system):
+```bash
+pipx install .
+```
+
+Start the CLI with:
+```bash
+archlog
+```
+
+If the `archlog` command is not available after installation, your system might not have ~/.local/bin in its PATH.
+
+To fix this, run:
+```bash
+pipx ensurepath
+```
+
+Then restart your terminal or run:
+```bash
+source ~/.bashrc   # or ~/.zshrc depending on your shell
+```
+
 
 ## Build documentation with Sphinx
 If no /docs folder is available use the following command `sudo docker run -it --rm -v $(pwd)/docs:/docs sphinxdoc/sphinx sphinx-quickstart`
 
 Once that is available, you can for example generate a .html file with `sudo docker run --rm -v $(pwd)/docs:/docs sphinxdoc/sphinx make html`
+
+## Development Setup
+
+> It is recommended to use a virtual environment for development.
+
+Create a virtual environment:
+```bash
+python -m venv .venv
+```
+
+Activate the virtual environment:
+```bash
+source .venv/bin/activate
+```
+
+Install dev dependencies:
+```bash
+pip install -e .[dev]
+```
+
+The project uses the [black](https://github.com/psf/black) formatter.
+
+Please format your contributions before commiting them.
+```bash
+python -m black .
+```
 
 ## Support
 
