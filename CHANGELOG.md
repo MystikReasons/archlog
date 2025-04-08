@@ -1,4 +1,4 @@
-# 1.0.6 ()
+# 1.0.6 (2025-04-08)
 
 ### Features and enhancements
 
@@ -13,6 +13,7 @@
 - **Web Scraper** Refactor: Added and updated docstrings and type annotations
 - **Web Scraper** Added custom user agent to better avoid bot-detection when using playwright
 - **Package Handler** Replaced `pacman -Sy` and `pacman -Qu` commands with `checkupdates`
+- **Entire Project** Refactor: restructure CLI entrypoint, XDG paths, pyproject config and dev setup
 
 ### Bug fixes
 
