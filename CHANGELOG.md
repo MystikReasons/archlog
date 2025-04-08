@@ -1,3 +1,11 @@
+# 1.0.7 ()
+
+### Features and enhancements
+
+- **General** Updated README and pyproject.toml
+
+### Bug fixes
+
 # 1.0.6 (2025-04-08)
 
 ### Features and enhancements
