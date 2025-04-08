@@ -1,5 +1,14 @@
-venv/
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Sphinx documentation
+docs/
+
+# Distribution / packaging
+build/
+*.egg-info/
+
 logs/
 changelog/
-docs/
-__pycache__
