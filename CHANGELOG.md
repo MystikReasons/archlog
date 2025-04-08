@@ -6,6 +6,8 @@
 
 ### Bug fixes
 
+- **Logger** Removed redundant logging output
+
 # 1.0.6 (2025-04-08)
 
 ### Features and enhancements
