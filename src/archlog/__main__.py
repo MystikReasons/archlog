@@ -1,6 +1,7 @@
-#! /usr/bin/python3
-from config_handler import ConfigHandler
-from package_handler import PackageHandler
+import sys
+from archlog.config_handler import ConfigHandler
+from archlog.package_handler import PackageHandler
+from archlog.logic import collect_changelog_data
 
 
 def main():
@@ -13,21 +14,14 @@ def main():
     logger.debug("Logger is set up")
 
     packages_to_update = package_handler.get_upgradable_packages()
-
-    max_package_name_length = max(
-        len(package.package_name) for package in packages_to_update
-    )
-    max_package_current_version = max(
-        len(package.current_version) for package in packages_to_update
-    )
-    max_package_new_version = max(
-        len(package.new_version) for package in packages_to_update
-    )
-    max_package_count = len(str(len(packages_to_update)))
-
-    if packages_to_update is None:
+    if not packages_to_update:
         logger.info("No packages to upgrade")
-        exit()
+        sys.exit(0)
+
+    max_package_name_length = max(len(package.package_name) for package in packages_to_update)
+    max_package_current_version = max(len(package.current_version) for package in packages_to_update)
+    max_package_new_version = max(len(package.new_version) for package in packages_to_update)
+    max_package_count = len(str(len(packages_to_update)))
 
     logger.info(f"Upgradable packages ({len(packages_to_update)}):")
     logger.info("--------------------")
@@ -44,9 +38,7 @@ def main():
 
     valid_input = False
     while not valid_input:
-        chosen_packages = input(
-            "Enter package indices (comma separated), or 0 to select all: "
-        )
+        chosen_packages = input("Enter package indices (comma separated), or 0 to select all: ")
 
         if chosen_packages == "0":
             selected_packages = packages_to_update
@@ -64,9 +56,7 @@ def main():
                     break
 
             if selected_indices:
-                selected_packages = [
-                    packages_to_update[index] for index in selected_indices
-                ]
+                selected_packages = [packages_to_update[index] for index in selected_indices]
                 valid_input = True
             else:
                 logger.info("Invalid input. Please enter valid package indices.")
@@ -74,36 +64,20 @@ def main():
     if selected_packages and chosen_packages != "0":
         logger.info("Selected packages for changelog check:")
         for package in selected_packages:
-            logger.info(
-                f"{package.package_name} {package.current_version} -> {package.new_version}"
-            )
-
+            logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
     logger.info("--------------------")
 
-    for package in selected_packages:
-        logger.info(
-            f"{package.package_name} {package.current_version} -> {package.new_version}"
-        )
-        package_changelog = package_handler.get_package_changelog(package)
+    result = collect_changelog_data(selected_packages, package_handler, config_handler)
+
+    for package, package_changelog in result:
+        logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
 
         if package_changelog:
             logger.info("Changelog:")
-            for (
-                message,
-                url,
-                tag,
-                package_type,
-                release_type,
-                compare_tags_urls,
-            ) in package_changelog:
+            for message, url, *_ in package_changelog:
                 logger.info(f"- {message}")
                 logger.info(f"\t{url}")
         else:
             logger.info(f"No changelog for package: {package.package_name} found.")
 
-        config_handler.write_changelog(package, package_changelog)
         logger.info("--------------------------------")
-
-
-if __name__ == "__main__":
-    main()

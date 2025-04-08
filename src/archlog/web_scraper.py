@@ -35,42 +35,29 @@ class WebScraper:
         attempt = 0
         while attempt < retries:
             try:
-                context = self.browser.new_context(
-                    locale="en-US", user_agent=user_agent
-                )
+                context = self.browser.new_context(locale="en-US", user_agent=user_agent)
 
                 page = context.new_page()
                 page.goto(url, timeout=60000)
                 page.wait_for_load_state("networkidle", timeout=60000)
-                content = page.content()
-                return content
+                return page.content()
             except TimeoutError:
-                self.logger.error(
-                    f"[Error]: Timeout error while fetching {url}. Retrying... [{attempt+1}/{retries}]"
-                )
+                self.logger.error(f"[Error]: Timeout error while fetching {url}. Retrying... [{attempt+1}/{retries}]")
             except Exception as ex:
-                self.logger.error(
-                    f"[Error]: Error while fetching {url}: {ex}. Retrying... [{attempt+1}/{retries}]"
-                )
+                self.logger.error(f"[Error]: Error while fetching {url}: {ex}. Retrying... [{attempt+1}/{retries}]")
             finally:
                 attempt += 1
                 if attempt < retries:
                     if page:
-                        page.wait_for_timeout(
-                            self.config.config.get("webscraper-delay")
-                        )
+                        page.wait_for_timeout(self.config.config.get("webscraper-delay"))
                         page.close()
                 else:
                     page.close()
 
-        self.logger.error(
-            f"[Error]: Failed to fetch content from {url} after {retries} retries."
-        )
+        self.logger.error(f"[Error]: Failed to fetch content from {url} after {retries} retries.")
         return None
 
-    def find_all_elements(
-        self, content: str, tag: Optional[str] = None, **kwargs: Any
-    ) -> List:
+    def find_all_elements(self, content: str, tag: Optional[str] = None, **kwargs: Any) -> List:
         """Finds all elements in the HTML content based on the specified tag and additional attributes.
 
         :param content: The HTML content to be parsed.
@@ -85,9 +72,7 @@ class WebScraper:
         soup = BeautifulSoup(content, "html.parser")
         return soup.find_all(tag, **kwargs)
 
-    def find_element(
-        self, content: str, tag: Optional[str] = None, **kwargs: Any
-    ) -> Optional:
+    def find_element(self, content: str, tag: Optional[str] = None, **kwargs: Any) -> Optional:
         """Finds an element in the HTML content based on the specified tag and additional attributes.
 
         :param content: The HTML content to be parsed.
@@ -156,9 +141,7 @@ class WebScraper:
                 self.logger.info(f"[Info]: Website: {url} is reachable")
                 return True
             else:
-                self.logger.info(
-                    f"[Info]: Website: {url} returned status code {response.status_code}."
-                )
+                self.logger.info(f"[Info]: Website: {url} returned status code {response.status_code}.")
                 return False
         except requests.RequestException as ex:
             self.logger.error(

@@ -1,7 +1,7 @@
 from typing import Optional, List, Tuple, Dict, Any
 from collections import namedtuple
 from urllib.parse import urljoin, urlparse
-from web_scraper import WebScraper
+from archlog.web_scraper import WebScraper
 import re
 import subprocess
 import shutil
@@ -41,7 +41,8 @@ class PackageHandler:
         )
 
         # Get the enabled repositories from the config file
-        for repository in self.config.config.get("arch-repositories"):
+        arch_repositories = self.config.config.get("arch-repositories", [])
+        for repository in arch_repositories:
             if repository.get("enabled"):
                 self.enabled_repositories.append(repository.get("name"))
 
@@ -83,9 +84,7 @@ class PackageHandler:
                 packages_to_update = self.split_package_information(packages_to_update)
                 return packages_to_update
             except subprocess.CalledProcessError as ex:
-                self.logger.error(
-                    f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
-                )
+                self.logger.error(f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
                 self.logger.error("[Error]: Standard Error:")
                 self.logger.error(ex.stderr)
                 exit()
@@ -200,9 +199,7 @@ class PackageHandler:
 
         return tag_part_main, tag_part_suffix
 
-    def get_package_changelog(
-        self, package: namedtuple
-    ) -> Optional[List[Tuple[str, str, str, str, str]]]:
+    def get_package_changelog(self, package: namedtuple) -> Optional[List[Tuple[str, str, str, str, str]]]:
         """Generates a changelog for a specified package by analyzing intermediate, minor, and major releases
         between its current and new versions. It fetches and compares relevant metadata and tags from
         Arch Linux repositories, as well as upstream sources like GitHub, GitLab, and KDE GitLab.
@@ -255,9 +252,7 @@ class PackageHandler:
         # TODO: Check if the source files (PKGBUILD, etc.) did receive some updates beside pkver, pkgrel, etc...
         # Always extract the package name from Arch's source control repository.
         # Example: https://gitlab.archlinux.org/archlinux/packaging/packages/nss -> nss
-        arch_package_name = (
-            urlparse(package_source_files_url).path.rstrip("/").split("/")[-1]
-        )
+        arch_package_name = urlparse(package_source_files_url).path.rstrip("/").split("/")[-1]
 
         # Check if there were multiple releases on Arch side (either major or minor)
         # This will check the current local version with the first intermediate tag and then it will shift.
@@ -267,14 +262,10 @@ class PackageHandler:
         arch_package_tags = self.get_package_tags(package_source_files_url + "/-/tags")
 
         if not arch_package_tags:
-            self.logger.error(
-                f"[Error]: {arch_package_name}: Couldn't find any arch package tags"
-            )
+            self.logger.error(f"[Error]: {arch_package_name}: Couldn't find any arch package tags")
             return None
 
-        intermediate_tags = self.find_intermediate_tags(
-            arch_package_tags, package.current_version, package.new_version
-        )
+        intermediate_tags = self.find_intermediate_tags(arch_package_tags, package.current_version, package.new_version)
         if intermediate_tags:
             self.logger.info(f"[Info]: Intermediate tags: {intermediate_tags}")
             package_changelog_temp = self.handle_intermediate_tags(
@@ -368,9 +359,7 @@ class PackageHandler:
                 first_compare_version = package.current_version_altered
             else:
                 first_compare_version = intermediate_tags[index - 1][0]
-                first_compare_main, first_compare_suffix = self.split_package_tag(
-                    first_compare_version
-                )
+                first_compare_main, first_compare_suffix = self.split_package_tag(first_compare_version)
 
             # Package tags can look like this:
             # 1-16.5-2 or 20240526-1
@@ -386,10 +375,7 @@ class PackageHandler:
             # Some Arch packages do have versions that look like this: 1:1.16.5-2
             # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
             # In order to make a tag compare on Gitlab, use the altered versions
-            if (
-                first_compare_main == second_compare_main
-                and first_compare_suffix != second_compare_suffix
-            ):
+            if first_compare_main == second_compare_main and first_compare_suffix != second_compare_suffix:
                 self.logger.info(f"[Info]: {release} is a minor intermediate release")
 
                 package_changelog_temp = self.get_changelog_compare_package_tags(
@@ -437,13 +423,8 @@ class PackageHandler:
                 continue
 
         # Check if the last intermediate tag is a minor release
-        if (
-            second_compare_main == package.new_main
-            and second_compare_suffix != package.new_suffix
-        ):
-            self.logger.info(
-                f"[Info]: {package.new_version_altered} is a minor release (after intermediate release)"
-            )
+        if second_compare_main == package.new_main and second_compare_suffix != package.new_suffix:
+            self.logger.info(f"[Info]: {package.new_version_altered} is a minor release (after intermediate release)")
 
             package_changelog_temp = self.get_changelog_compare_package_tags(
                 package_source_files_url,
@@ -457,9 +438,7 @@ class PackageHandler:
                 package_changelog += package_changelog_temp
         # Check if the last intermediate tag is a major release
         elif second_compare_main != package.new_main:
-            self.logger.info(
-                f"[Info]: {package.new_version_altered} is a major release (after intermediate release)"
-            )
+            self.logger.info(f"[Info]: {package.new_version_altered} is a major release (after intermediate release)")
 
             # Always get the Arch package changelog too, which is the same as the "minor" release case
             package_changelog_temp = self.get_changelog_compare_package_tags(
@@ -501,11 +480,6 @@ class PackageHandler:
         :type package_name: str
         :return: The architecture of the specified package.
         :rtype: str
-        :raises subprocess.CalledProcessError: If the `pacman` command returns a non-zero exit status.
-            This may occur if the package name is incorrect or if there is an issue executing the command.
-        :raises PermissionError: If there is a permissions issue when trying to execute the `pacman` command.
-            This could occur if the user does not have the necessary permissions to run the command.
-        :raises Exception: For any other unexpected errors that occur during execution.
         """
         try:
             result = subprocess.run(
@@ -516,12 +490,10 @@ class PackageHandler:
             )
 
         except subprocess.CalledProcessError as ex:
-            self.logger.error(
-                f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}."
-            )
+            self.logger.error(f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
             self.logger.error("[Error]: Standard Error:")
             self.logger.error(ex.stderr)
-            exit(1)
+            exit(1)  # TODO: zu raises() umwandeln, für alle
         except PermissionError:
             self.logger.error(
                 "[Error]: Permission denied. Are you sure you have the necessary permissions to run this command?"
@@ -537,9 +509,7 @@ class PackageHandler:
         for line in output:
             if line.startswith(self.config.config.get("architecture-wording")):
                 package_architecture = line.split(":")[1].strip()
-                self.logger.debug(
-                    f"[Debug]: Package architecture: {package_architecture}"
-                )
+                self.logger.debug(f"[Debug]: Package architecture: {package_architecture}")
                 break
 
         if not package_architecture:
@@ -552,9 +522,7 @@ class PackageHandler:
 
         return package_architecture
 
-    def get_arch_package_compare_information(
-        self, url: str
-    ) -> Optional[Dict[str, Optional[str]]]:
+    def get_arch_package_compare_information(self, url: str) -> Optional[Dict[str, Optional[str]]]:
         """Extracts the source URL and associated tag information from an Arch package compare webpage.
 
         This function sends an HTTP GET request to the specified URL, parses the HTML content,
@@ -585,13 +553,9 @@ class PackageHandler:
                 self.logger.debug(f"[Debug]: No response received from {url}")
                 return None
 
-            old_lines = self.web_scraper.find_all_elements(
-                response, "tr", class_="line_holder old"
-            )
+            old_lines = self.web_scraper.find_all_elements(response, "tr", class_="line_holder old")
 
-            new_lines = self.web_scraper.find_all_elements(
-                response, "tr", class_="line_holder new"
-            )
+            new_lines = self.web_scraper.find_all_elements(response, "tr", class_="line_holder new")
 
             # Example on how the URL's could look like:
             # source = expat::git+https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
@@ -612,9 +576,7 @@ class PackageHandler:
                     source_urls_new.append(match.group(0))
 
             if not source_urls_old or not source_urls_new:
-                self.logger.debug(
-                    f"[Debug]: Couldn't find source nodes either for new or old in {url}"
-                )
+                self.logger.debug(f"[Debug]: Couldn't find source nodes either for new or old in {url}")
                 return None
 
             max_length = max(len(source_urls_old), len(source_urls_new))
@@ -643,21 +605,15 @@ class PackageHandler:
                         # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
                         # https://github.com/abseil/abseil-cpp/archive/20250127.0/abseil-cpp-20250127.0.tar.gz
                         # We only want to extract: https://github.com/abseil/abseil-cpp/
-                        match_url_old = re.search(
-                            r"https://github\.com/[^/]+/[^/?]+", old_url
-                        )
-                        match_url_new = re.search(
-                            r"https://github\.com/[^/]+/[^/?]+", new_url
-                        )
+                        match_url_old = re.search(r"https://github\.com/[^/]+/[^/?]+", old_url)
+                        match_url_new = re.search(r"https://github\.com/[^/]+/[^/?]+", new_url)
                     else:
                         match_url_old = re.search(r"https://.*?(?=#|$)", old_url)
                         match_url_new = re.search(r"https://.*?(?=#|$)", new_url)
 
                     # Handle tags
                     #
-                    if ("gitlab" in old_url or "git." in old_url) or (
-                        "gitlab" in new_url or "git." in new_url
-                    ):
+                    if ("gitlab" in old_url or "git." in old_url) or ("gitlab" in new_url or "git." in new_url):
                         # The URL could look like this:
                         # https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
                         # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
@@ -675,81 +631,55 @@ class PackageHandler:
                         # https://github.com/libusb/libusb/releases/download/v1.0.28/...
                         # https://github.com/abseil/abseil-cpp/archive/20250127.0/...
                         if not match_tag_old:
-                            match_tag_old = re.search(
-                                r"/(?:download|archive)/([^/]+)", old_url
-                            )
+                            match_tag_old = re.search(r"/(?:download|archive)/([^/]+)", old_url)
 
                         if not match_tag_new:
-                            match_tag_new = re.search(
-                                r"/(?:download|archive)/([^/]+)", new_url
-                            )
+                            match_tag_new = re.search(r"/(?:download|archive)/([^/]+)", new_url)
                     else:
                         match_tag_old = None
                         match_tag_new = None
 
                     if match_url_old:
-                        self.logger.debug(
-                            f"[Debug]: Source URL old: {match_url_old.group(0)}"
-                        )
+                        self.logger.debug(f"[Debug]: Source URL old: {match_url_old.group(0)}")
                     else:
                         self.logger.debug("[Debug]: Source URL old: None")
                     if match_url_new:
-                        self.logger.debug(
-                            f"[Debug]: Source URL new: {match_url_new.group(0)}"
-                        )
+                        self.logger.debug(f"[Debug]: Source URL new: {match_url_new.group(0)}")
                     else:
                         self.logger.debug("[Debug]: Source URL new: None")
                     if match_tag_old:
-                        self.logger.debug(
-                            f"[Debug]: Source tag old: {match_tag_old.group(1)}"
-                        )
+                        self.logger.debug(f"[Debug]: Source tag old: {match_tag_old.group(1)}")
                     else:
                         self.logger.debug("[Debug]: Source tag old: None")
                     if match_tag_new:
-                        self.logger.debug(
-                            f"[Debug]: Source tag new: {match_tag_new.group(1)}"
-                        )
+                        self.logger.debug(f"[Debug]: Source tag new: {match_tag_new.group(1)}")
                     else:
                         self.logger.debug("[Debug]: Source tag new: None")
 
                     if match_url_old is not None and match_url_new is not None:
-                        similarity = SequenceMatcher(
-                            None, match_url_old.group(0), match_url_new.group(0)
-                        ).ratio()
+                        similarity = SequenceMatcher(None, match_url_old.group(0), match_url_new.group(0)).ratio()
                     else:
                         similarity = 0.0
 
                     # Both URL's are similar
                     if similarity >= 0.8:
                         return {
-                            "new_source_url": (
-                                match_url_new.group(0) if match_url_new else None
-                            ),
-                            "old_source_url": (
-                                match_url_old.group(0) if match_url_old else None
-                            ),
-                            "new_source_tag": (
-                                match_tag_new.group(1) if match_tag_new else None
-                            ),
-                            "old_source_tag": (
-                                match_tag_old.group(1) if match_tag_old else None
-                            ),
+                            "new_source_url": (match_url_new.group(0) if match_url_new else None),
+                            "old_source_url": (match_url_old.group(0) if match_url_old else None),
+                            "new_source_tag": (match_tag_new.group(1) if match_tag_new else None),
+                            "old_source_tag": (match_tag_old.group(1) if match_tag_old else None),
                         }
                     else:
                         return None
                 else:
-                    self.logger.debug(
-                        f"[Debug]: Couldn't extract either old_url or new_url"
-                    )
+                    self.logger.debug(f"[Debug]: Couldn't extract either old_url or new_url")
                     return None
             else:
                 self.logger.error(f"[Error]: Couldn't find 'source =' in {url}")
                 return None
 
         except Exception as ex:
-            self.logger.error(
-                f"[Error]: Unexpected error while processing URL {url}: {ex}"
-            )
+            self.logger.error(f"[Error]: Unexpected error while processing URL {url}: {ex}")
             return None
 
     def get_package_repository(
@@ -776,12 +706,7 @@ class PackageHandler:
         reachable_repository = []
         for repository in enabled_repositories:
             possible_url = (
-                "https://archlinux.org/packages/"
-                + repository
-                + "/"
-                + package_architecture
-                + "/"
-                + package_name
+                "https://archlinux.org/packages/" + repository + "/" + package_architecture + "/" + package_name
             )
 
             if self.web_scraper.check_website_availabilty(possible_url):
@@ -813,9 +738,7 @@ class PackageHandler:
             self.logger.debug(f"[Debug]: No response received from {url}")
             return None
 
-        upstream_link = self.web_scraper.find_element(
-            response, "th", string="Upstream URL:"
-        )
+        upstream_link = self.web_scraper.find_element(response, "th", string="Upstream URL:")
         if upstream_link:
             upstream_url = upstream_link.find_next_sibling("td").find("a").get("href")
             self.logger.debug(f"[Debug]: Package upstream URL: {upstream_url}")
@@ -841,23 +764,17 @@ class PackageHandler:
                 self.logger.debug(f"[Debug]: No response received from {url}")
                 return None
 
-            source_file_link = self.web_scraper.find_element(
-                response, "a", string="Source Files"
-            )
+            source_file_link = self.web_scraper.find_element(response, "a", string="Source Files")
 
             if source_file_link:
                 source_file_url = source_file_link.get("href")
                 self.logger.info(f"[Info]: Arch 'Source Files' URL: {source_file_url}")
                 return source_file_url
             else:
-                self.logger.error(
-                    f"[Error]: Couldn't find node 'Source Files' on {url}"
-                )
+                self.logger.error(f"[Error]: Couldn't find node 'Source Files' on {url}")
                 return None
         except Exception as ex:
-            self.logger.error(
-                f"[Error]: An unexpected error occurred while parsing the HTML: {ex}"
-            )
+            self.logger.error(f"[Error]: An unexpected error occurred while parsing the HTML: {ex}")
             return None
 
     def get_package_tags(self, url: str) -> List[Tuple[str, str]]:
@@ -882,17 +799,13 @@ class PackageHandler:
 
             if "github" in url:
                 # TODO: Currently it does not search for further tags if the Github page has a "Next" button.
-                release_tags_raw = self.web_scraper.find_all_elements(
-                    response, "a", class_="Link--primary"
-                )
+                release_tags_raw = self.web_scraper.find_all_elements(response, "a", class_="Link--primary")
 
                 if not release_tags_raw:
                     return None
 
                 release_tags = [tag.text.strip() for tag in release_tags_raw]
-                time_tags_raw = self.web_scraper.find_all_elements(
-                    response, "relative-time"
-                )
+                time_tags_raw = self.web_scraper.find_all_elements(response, "relative-time")
 
                 if not time_tags_raw:
                     return None
@@ -920,9 +833,7 @@ class PackageHandler:
                 # On their repository host (GitLab) the tags do like this: 1-1.16.5-2
                 # In order to make a tag compare on GitLab, transform '1:' to '1-'
                 transformed_release = release.replace("1:", "1-")
-                self.logger.debug(
-                    f"[Debug]: Release tag: {transformed_release} Time tag: {time}"
-                )
+                self.logger.debug(f"[Debug]: Release tag: {transformed_release} Time tag: {time}")
                 combined_info[index] = (transformed_release, time)
 
             return combined_info
@@ -998,13 +909,9 @@ class PackageHandler:
             case _:
                 # Example:
                 # https://gitlab.archlinux.org/archlinux/packaging/packages/abseil-cpp/-/compare/20240722.1-1...20250127.0-1
-                compare_arch_tags_url = (
-                    f"{package_source_files_url}/compare/{current_tag}...{new_tag}"
-                )
+                compare_arch_tags_url = f"{package_source_files_url}/compare/{current_tag}...{new_tag}"
 
-                arch_package_information = self.get_arch_package_compare_information(
-                    compare_arch_tags_url
-                )
+                arch_package_information = self.get_arch_package_compare_information(compare_arch_tags_url)
 
                 if arch_package_information is None:
                     return None
@@ -1083,9 +990,7 @@ class PackageHandler:
                 tag_versions = [tag[0] for tag in upstream_package_tags]
 
                 if current_tag not in upstream_package_tags:
-                    closest_match_current_tag = get_close_matches(
-                        current_tag, tag_versions, n=1, cutoff=0.5
-                    )
+                    closest_match_current_tag = get_close_matches(current_tag, tag_versions, n=1, cutoff=0.5)
 
                     if closest_match_current_tag:
                         self.logger.debug(
@@ -1098,9 +1003,7 @@ class PackageHandler:
 
                 if new_tag or override_shown_tag not in upstream_package_tags:
                     new_tag_to_check = override_shown_tag or new_tag
-                    closest_match_new_tag = get_close_matches(
-                        new_tag_to_check, tag_versions, n=1, cutoff=0.5
-                    )
+                    closest_match_new_tag = get_close_matches(new_tag_to_check, tag_versions, n=1, cutoff=0.5)
 
                     if closest_match_new_tag:
                         self.logger.debug(
@@ -1123,23 +1026,17 @@ class PackageHandler:
                     f"{(closest_match_new_tag or [new_tag])[0]}"
                 )
             else:
-                self.logger.debug(
-                    f"[Debug]: No upstream package tags found for {source}"
-                )
+                self.logger.debug(f"[Debug]: No upstream package tags found for {source}")
 
         if not compare_tags_url:
             if "github" in source:
-                compare_tags_url = (
-                    f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
-                )
+                compare_tags_url = f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
             elif "git.kernel.org" in source:
                 # Example:
                 # https://web.git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git/log/?id=v34.1&id2=v34
                 compare_tags_url = f"{source}/log/?id={new_tag}&id2={current_tag}"
             else:
-                compare_tags_url = (
-                    f"{source.rstrip('/')}/compare/{current_tag}...{new_tag}"
-                )
+                compare_tags_url = f"{source.rstrip('/')}/compare/{current_tag}...{new_tag}"
 
         self.logger.debug(f"[Debug]: Compare tags URL: {compare_tags_url}")
 
@@ -1163,35 +1060,25 @@ class PackageHandler:
             tag = "a"
 
         if "git.kernel.org" in source:
-            commits = self.web_scraper.find_elements_between_two_elements(
-                response, "tr", new_tag, current_tag
-            )
+            commits = self.web_scraper.find_elements_between_two_elements(response, "tr", new_tag, current_tag)
         else:
             commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
 
         if not commits:
-            self.logger.debug(
-                f"[Debug]: No commit messages found in the response from {compare_tags_url}"
-            )
+            self.logger.debug(f"[Debug]: No commit messages found in the response from {compare_tags_url}")
             return None
 
         if "git.kernel.org" in source:
-            commit_messages = [
-                commit.find("a").get_text(strip=True) for commit in commits
-            ]
+            commit_messages = [commit.find("a").get_text(strip=True) for commit in commits]
         else:
             commit_messages = [commit.get_text(strip=True) for commit in commits]
 
         if "github" in source or "git.kernel.org" in source:
-            commit_urls = [
-                urljoin(source, commit.find("a")["href"]) for commit in commits
-            ]
+            commit_urls = [urljoin(source, commit.find("a")["href"]) for commit in commits]
         else:
             commit_urls = [urljoin(source, commit.get("href")) for commit in commits]
 
-        version_tags = [override_shown_tag if override_shown_tag else new_tag] * len(
-            commit_messages
-        )
+        version_tags = [override_shown_tag if override_shown_tag else new_tag] * len(commit_messages)
         package_names = [package_name] * len(commit_messages)
         release_types = [release_type] * len(commit_messages)
         compare_tags_urls = [compare_tags_url] * len(commit_messages)
@@ -1256,11 +1143,7 @@ class PackageHandler:
             match tries:
                 case 0:
                     kde_category = next(
-                        (
-                            category
-                            for category in kde_package_categories
-                            if re.search(category, url, re.IGNORECASE)
-                        ),
+                        (category for category in kde_package_categories if re.search(category, url, re.IGNORECASE)),
                         None,
                     )
 
@@ -1272,9 +1155,7 @@ class PackageHandler:
                     kde_category_url = "https://apps.kde.org/" + package_name
 
                     if not self.web_scraper.check_website_availabilty(kde_category_url):
-                        self.logger.debug(
-                            f"[Debug]: Website: {kde_category_url} is not reachable"
-                        )
+                        self.logger.debug(f"[Debug]: Website: {kde_category_url} is not reachable")
                         break
 
                     response = self.web_scraper.fetch_page_content(kde_category_url)
@@ -1294,27 +1175,19 @@ class PackageHandler:
                         self.logger.debug(f"[Debug]: KDE category: {kde_category}")
                         break
                     else:
-                        self.logger.error(
-                            f"[Error]: Couldn't extract KDE package category from {kde_category_url}"
-                        )
+                        self.logger.error(f"[Error]: Couldn't extract KDE package category from {kde_category_url}")
 
         kde_gitlab_url = None
         if kde_category_found:
             for category in kde_package_categories:
                 if category in kde_category.lower():
-                    kde_gitlab_url = (
-                        "https://invent.kde.org/" + category + "/" + package_name
-                    )
+                    kde_gitlab_url = "https://invent.kde.org/" + category + "/" + package_name
 
             if not kde_gitlab_url:
-                self.logger.error(
-                    f"[Error]: Unknown KDE GitLab group in: {kde_category}"
-                )
+                self.logger.error(f"[Error]: Unknown KDE GitLab group in: {kde_category}")
         else:
             for category in kde_package_categories:
-                kde_gitlab_url = (
-                    "https://invent.kde.org/" + category + "/" + package_name
-                )
+                kde_gitlab_url = "https://invent.kde.org/" + category + "/" + package_name
 
                 # We can't use the check_website_availability function of web_scraper since a wrong
                 # URL won't lead to a 404 or another error return code but to a sign in page which
@@ -1335,13 +1208,8 @@ class PackageHandler:
                     response, "a", text=lambda text: text and package_name in text
                 )
 
-                if (
-                    kde_package_name_extracted is not None
-                    and package_name in kde_package_name_extracted.text
-                ):
-                    self.logger.debug(
-                        f"[Debug]: KDE GitLab package URL: {kde_gitlab_url}"
-                    )
+                if kde_package_name_extracted is not None and package_name in kde_package_name_extracted.text:
+                    self.logger.debug(f"[Debug]: KDE GitLab package URL: {kde_gitlab_url}")
                     break
 
         if kde_gitlab_url:
@@ -1361,9 +1229,7 @@ class PackageHandler:
         else:
             return None
 
-    def find_intermediate_tags(
-        self, package_tags, current_tag: str, new_tag: str
-    ) -> Optional[List[Tuple[str, str]]]:
+    def find_intermediate_tags(self, package_tags, current_tag: str, new_tag: str) -> Optional[List[Tuple[str, str]]]:
         """Finds and returns intermediate tags between the current and new version tags for a package.
         This method looks for tags between the current and new versions within a list of package tags.
         It ensures that intermediate versions are correctly identified, reversed if necessary, and returned
@@ -1394,9 +1260,7 @@ class PackageHandler:
                 break
 
         if start_index is None or end_index is None:
-            self.logger.error(
-                "[Error]: Intermediate tags. Either current_tag, new_tag or both were not found."
-            )
+            self.logger.error("[Error]: Intermediate tags. Either current_tag, new_tag or both were not found.")
             return None
 
         # Check if the intermediate tag(s) are really the next version of the current version

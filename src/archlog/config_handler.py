@@ -1,32 +1,64 @@
 from typing import Optional, Dict, Any, List, Tuple, NamedTuple
-import os
+from pathlib import Path
 import logging
 import json
+import os
 from datetime import datetime
+import sys
 
-DEFAULT_CONFIG_FILE_NAME = "config.json"
+
+DEFAULT_CONFIG_FILENAME = "config.json"
+DEFAULT_CONFIG = {
+    "architecture-wording": "Architecture",
+    "webscraper-delay": 3000,
+    "arch-repositories": [
+        {"name": "extra", "enabled": True},
+        {"name": "core", "enabled": True},
+        {"name": "multilib", "enabled": True},
+        {"name": "core-testing", "enabled": False},
+        {"name": "extra-testing", "enabled": False},
+        {"name": "multilib-testing", "enabled": False},
+        {"name": "testing", "enabled": False},
+        {"name": "gnome-unstable", "enabled": False},
+        {"name": "kde-unstable", "enabled": False},
+    ],
+}
+
+
+def get_config_path(filename: str) -> Path:
+    return Path(os.getenv("XDG_CONFIG_HOME", "~/.config")).expanduser() / "archlog" / filename
+
+
+def get_logs_path() -> Path:
+    return Path(os.getenv("XDG_STATE_HOME", "~/.local/state")).expanduser() / "archlog" / "logs"
+
+
+def get_changelog_path() -> Path:
+    return Path.home() / "archlog"
 
 
 class ConfigHandler:
-    def __init__(self, config_path=DEFAULT_CONFIG_FILE_NAME) -> None:
+    def __init__(self, config_path: Optional[Path] = None) -> None:
         """Constructor method"""
-        self.dir_path = os.path.dirname(os.path.abspath(__file__))
-        self.config_path = os.path.join(self.dir_path, config_path)
-        self.config = self.load_config()
+        self.config_path = Path(config_path or get_config_path(DEFAULT_CONFIG_FILENAME))
+        self.logs_path = get_logs_path()
+        self.changelog_path = get_changelog_path()
+
+        # Ensure directories exist
+        self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        self.logs_path.mkdir(parents=True, exist_ok=True)
+        self.changelog_path.mkdir(parents=True, exist_ok=True)
 
         self.datetime_now = datetime.now()
         self.dt_string_logging = self.datetime_now.strftime("%d-%m-%Y_%H-%M-%S")
         self.dt_string_changelog = self.datetime_now.strftime("changelog-%d-%m-%Y.json")
 
-        self.logs_path = os.path.join(self.dir_path, "logs", "")
-        if not os.path.exists(self.logs_path):
-            os.makedirs(self.logs_path)
-
-        self.changelog_path = os.path.join(self.dir_path, "changelog", "")
-        if not os.path.exists(self.changelog_path):
-            os.makedirs(self.changelog_path)
-
         self.setup_logging()
+        self.config = self.load_config()
+
+        self.logger.info(f"[Info]: Config file:         {self.config_path}")
+        self.logger.info(f"[Info]: Log directory:       {self.logs_path}")
+        self.logger.info(f"[Info]: Changelog directory: {self.changelog_path}\n")
 
     def setup_logging(self) -> None:
         """
@@ -41,16 +73,13 @@ class ConfigHandler:
         :return: None
         """
         try:
+            logfile = self.logs_path / f"{self.dt_string_logging}.log"
             logging.basicConfig(
-                filename=self.logs_path + self.dt_string_logging,
+                filename=logfile,
                 format="%(asctime)s %(message)s",
                 filemode="w",
             )
-        except (FileNotFoundError, PermissionError) as ex:
-            print(f"Error setting up log file: {ex}")
-            return None
 
-        try:
             self.logger = logging.getLogger()
             self.logger.setLevel(logging.DEBUG)
 
@@ -59,33 +88,37 @@ class ConfigHandler:
             stream.setLevel(logging.INFO)
             streamformat = logging.Formatter("%(message)s")
             stream.setFormatter(streamformat)
-
             self.logger.addHandler(stream)
         except Exception as ex:
-            print(f"Error setting up logger: {ex}")
+            print(f"[Error]: Failed to set up logger: {ex}")
             return None
 
-    def load_config(self) -> Optional[Dict[str, Any]]:
+    def load_config(self) -> Dict[str, Any]:
         """
         Loads the configuration from a JSON file.
 
         :raises FileNotFoundError: If the configuration file does not exist, logs an error and returns None.
         :return: The loaded configuration as a dictionary, or None if the file is not found.
-        :rtype: Optional[Dict[str, Any]]
+        :rtype: Dict[str, Any]
         """
+        if not self.config_path.exists():
+            self.logger.debug(f"[Debug]: Config file not found → creating default: {self.config_path}")
+            with open(self.config_path, "w", encoding="utf-8") as write_config_file:
+                json.dump(DEFAULT_CONFIG, write_config_file, indent=2)
+
         try:
-            with open(self.config_path, "r") as read_config_file:
-                config = json.load(read_config_file)
-        except FileNotFoundError:
-            self.logger.error(f"[Error]: Config file {self.config_path} not found.")
-            return None
+            with open(self.config_path, "r", encoding="utf-8") as read_config_file:
+                return json.load(read_config_file)
+        except Exception as ex:
+            self.logger.error(f"[Error]: Failed to load config: {ex}")
+            sys.exit(0)
         return config
 
     def initialize_changelog_file(self):
         """
         Initializes the changelog file by removing any existing file with the same name.
         """
-        changelog_filename = self.changelog_path + self.dt_string_changelog
+        changelog_filename = self.changelog_path / self.dt_string_changelog
 
         if os.path.exists(changelog_filename):
             os.remove(changelog_filename)
@@ -109,14 +142,14 @@ class ConfigHandler:
         :type package_changelog: List[Tuple[str, str, str, str, str]]
         :return: None
         """
-        changelog_filename = self.changelog_path + self.dt_string_changelog
+        changelog_filename = self.changelog_path / self.dt_string_changelog
 
-        if os.path.exists(changelog_filename):
-            with open(changelog_filename, "r") as json_read_file:
-                try:
+        if changelog_filename.exists():
+            try:
+                with open(changelog_filename, "r") as json_read_file:
                     existing_data = json.load(json_read_file)
-                except json.JSONDecodeError:
-                    existing_data = {"packages": [], "changelog": {}}
+            except json.JSONDecodeError:
+                existing_data = {"packages": [], "changelog": {}}
         else:
             existing_data = {"packages": [], "changelog": {}}
 
@@ -152,10 +185,7 @@ class ConfigHandler:
 
                             compare_url = package_temp[5]
                             if (
-                                (
-                                    package_temp[4] == "arch"
-                                    or package_temp[4] == "minor"
-                                )
+                                (package_temp[4] == "arch" or package_temp[4] == "minor")
                                 and "archlinux.org" in compare_url
                                 and not compare_tags_url_arch
                             ):
@@ -164,9 +194,7 @@ class ConfigHandler:
                                 compare_tags_url_origin = compare_url
 
                     versions_dict[package_tag] = {
-                        "release-type": (
-                            "major" if release_type == "arch" else release_type
-                        ),
+                        "release-type": ("major" if release_type == "arch" else release_type),
                         "compare-url-tags-arch": (compare_tags_url_arch),
                         "compare-url-tags-origin": (compare_tags_url_origin),
                         "changelog": {
@@ -176,37 +204,25 @@ class ConfigHandler:
                     }
 
                     if release_type == "minor":
-                        versions_dict[package_tag]["changelog"][
-                            "changelog origin package"
-                        ].append("- Not applicable, minor release -")
-                        versions_dict[package_tag][
-                            "compare-url-tags-origin"
-                        ] = "- Not applicable, minor release -"
+                        versions_dict[package_tag]["changelog"]["changelog origin package"].append(
+                            "- Not applicable, minor release -"
+                        )
+                        versions_dict[package_tag]["compare-url-tags-origin"] = "- Not applicable, minor release -"
                     else:
                         major_exists = any(
-                            release_type_check == "major"
-                            for _, _, _, _, release_type_check, _ in package_changelog
+                            release_type_check == "major" for _, _, _, _, release_type_check, _ in package_changelog
                         )
 
                         if not major_exists:
-                            versions_dict[package_tag]["changelog"][
-                                "changelog origin package"
-                            ].append(
+                            versions_dict[package_tag]["changelog"]["changelog origin package"].append(
                                 "- ERROR: Couldn't find origin changelog. Check the logs for further information -"
                             )
-                if (
-                    arch_package_name == package.package_name
-                    and release_type != "major"
-                ):
-                    versions_dict[package_tag]["changelog"][
-                        "changelog Arch package"
-                    ].append(
+                if arch_package_name == package.package_name and release_type != "major":
+                    versions_dict[package_tag]["changelog"]["changelog Arch package"].append(
                         {"commit message": changelog_message, "commit URL": package_url}
                     )
                 else:
-                    versions_dict[package_tag]["changelog"][
-                        "changelog origin package"
-                    ].append(
+                    versions_dict[package_tag]["changelog"]["changelog origin package"].append(
                         {"commit message": changelog_message, "commit URL": package_url}
                     )
         else:
@@ -230,9 +246,7 @@ class ConfigHandler:
                     "version-tag": versionTag,
                     "release-type": changelog_data["release-type"],
                     "compare-url-tags-arch": changelog_data["compare-url-tags-arch"],
-                    "compare-url-tags-origin": changelog_data[
-                        "compare-url-tags-origin"
-                    ],
+                    "compare-url-tags-origin": changelog_data["compare-url-tags-origin"],
                     "changelog": changelog_data["changelog"],
                 }
             )
