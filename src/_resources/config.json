@@ -1,0 +1,15 @@
+{
+    "architecture-wording": "Architektur",
+    "webscraper-delay": 3000,
+    "arch-repositories": [
+        {"name": "extra", "enabled": true},
+        {"name": "core", "enabled": true},
+        {"name": "multilib", "enabled": true},
+        {"name": "core-testing", "enabled": false},
+        {"name": "extra-testing", "enabled": false},
+        {"name": "multilib-testing", "enabled": false},
+        {"name": "testing", "enabled": false},
+        {"name": "gnome-unstable", "enabled": false},
+        {"name": "kde-unstable", "enabled": false}
+    ]
+}
