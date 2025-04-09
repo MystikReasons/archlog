@@ -5,6 +5,7 @@ from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError
 from bs4 import BeautifulSoup
 import requests
+import sys
 
 
 class WebScraper:
@@ -20,7 +21,7 @@ class WebScraper:
 
     def _ensure_playwright_installed(self) -> None:
         """Checks and installs the required playwright browsers if missing.
-        
+
         Playwright will be removed in the future, for the meantime this function is needed
         to ensure that the browsers are correctly instaleld.
         """
@@ -32,10 +33,11 @@ class WebScraper:
             return None
 
         self.logger.info("[Info]: Installing playwright browsers...")
+
         try:
-            subprocess.run(["playwright", "install"], check=True)
+            subprocess.run([sys.executable, "-m", "playwright", "install"], check=True)
             self.logger.info("[Info]: Playwright installation complete.")
-        except Exception as ex:
+        except subprocess.CalledProcessError as ex:
             self.logger.error(f"[Error]: Could not install playwright. Error message: {ex}")
 
     def fetch_page_content(self, url: str, retries: int = 3) -> Optional[str]:
