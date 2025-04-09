@@ -110,7 +110,7 @@ class ConfigHandler:
                 return json.load(read_config_file)
         except Exception as ex:
             self.logger.error(f"[Error]: Failed to load config: {ex}")
-            exit()
+            exit(1)
         return config
 
     def initialize_changelog_file(self):

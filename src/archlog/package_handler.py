@@ -220,9 +220,6 @@ class PackageHandler:
         # https://archlinux.org/packages/core/any/automake/
         package_architecture = self.get_package_architecture(package.package_name)
 
-        if not package_architecture:
-            return None
-
         package_repository = self.get_package_repository(
             self.enabled_repositories, package.package_name, package_architecture
         )
@@ -514,11 +511,13 @@ class PackageHandler:
 
         if not package_architecture:
             self.logger.error(
-                "[Error]: Couldn't find package architecture in the output. If the system language is not English, "
-                "change the value of `architecture-wording` in the config file with the correct architecture "
-                "name which you can find with the command `sudo pacman -Q --info PACKAGE`"
+                "[Error]: Couldn't find the package architecture in the output. "
+                "If your system language is not set to English, update the `architecture-wording` value "
+                "in the config file to match the correct architecture label. "
+                "You can find it by running `sudo pacman -Q --info ANY-PACKAGE`. "
+                "The location of the config file is shown when you start the program."
             )
-            return None
+            exit(1)
 
         return package_architecture
 
