@@ -1,3 +1,5 @@
+from pathlib import Path
+import subprocess
 from typing import Optional, Dict, Any, List
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError
@@ -8,10 +10,33 @@ import requests
 class WebScraper:
     def __init__(self, logger, config: Optional[Dict[str, Any]]) -> None:
         """Constructor method"""
-        self.playwright = sync_playwright().start()
-        self.browser = self.playwright.chromium.launch(headless=True)
         self.logger = logger
         self.config = config
+
+        self._ensure_playwright_installed()
+
+        self.playwright = sync_playwright().start()
+        self.browser = self.playwright.chromium.launch(headless=True)
+
+    def _ensure_playwright_installed(self) -> None:
+        """Checks and installs the required playwright browsers if missing.
+        
+        Playwright will be removed in the future, for the meantime this function is needed
+        to ensure that the browsers are correctly instaleld.
+        """
+        chromium_dir = Path.home() / ".cache" / "ms-playwright"
+
+        if chromium_dir.exists() and any(
+            entry.is_dir() and "chromium" in entry.name for entry in chromium_dir.iterdir()
+        ):
+            return None
+
+        self.logger.info("[Info]: Installing playwright browsers...")
+        try:
+            subprocess.run(["playwright", "install"], check=True)
+            self.logger.info("[Info]: Playwright installation complete.")
+        except Exception as ex:
+            self.logger.error(f"[Error]: Could not install playwright. Error message: {ex}")
 
     def fetch_page_content(self, url: str, retries: int = 3) -> Optional[str]:
         """Fetches the full HTML content of a page using Playwright with retry logic.

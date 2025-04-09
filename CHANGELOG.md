@@ -7,6 +7,7 @@
 ### Bug fixes
 
 - **Logger** Removed redundant logging output
+- **Web Scraper** Make sure that playwright will be installed when using the tool for the first time
 
 # 1.0.6 (2025-04-08)
 
