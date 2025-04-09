@@ -4,7 +4,6 @@ import logging
 import json
 import os
 from datetime import datetime
-import sys
 
 
 DEFAULT_CONFIG_FILENAME = "config.json"
@@ -111,7 +110,7 @@ class ConfigHandler:
                 return json.load(read_config_file)
         except Exception as ex:
             self.logger.error(f"[Error]: Failed to load config: {ex}")
-            sys.exit(0)
+            exit()
         return config
 
     def initialize_changelog_file(self):

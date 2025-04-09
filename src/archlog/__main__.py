@@ -1,4 +1,3 @@
-import sys
 from archlog.config_handler import ConfigHandler
 from archlog.package_handler import PackageHandler
 from archlog.logic import collect_changelog_data
@@ -16,7 +15,7 @@ def main():
     packages_to_update = package_handler.get_upgradable_packages()
     if not packages_to_update:
         logger.info("No packages to upgrade")
-        sys.exit(0)
+        exit()
 
     max_package_name_length = max(len(package.package_name) for package in packages_to_update)
     max_package_current_version = max(len(package.current_version) for package in packages_to_update)
@@ -76,6 +75,6 @@ def main():
                 logger.info(f"- {message}")
                 logger.info(f"\t{url}")
         else:
-            logger.info(f"No changelog for package: {package.package_name} found.")
+            logger.info(f"[Info]: No changelog for package: {package.package_name} found.")
 
         logger.info("--------------------------------")
