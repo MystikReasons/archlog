@@ -68,7 +68,7 @@ class PackageHandler:
                 Install the package 'pacman-contrib' to use this program."""
                 )
             )
-            exit()
+            exit(1)
         else:
             try:
                 # Get the list of upgradable packages
@@ -87,15 +87,15 @@ class PackageHandler:
                 self.logger.error(f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
                 self.logger.error("[Error]: Standard Error:")
                 self.logger.error(ex.stderr)
-                exit()
+                exit(1)
             except PermissionError:
                 self.logger.error(
                     "[Error]: Permission denied. Are you sure you have the necessary permissions to run this command?"
                 )
-                exit()
+                exit(1)
             except Exception as ex:
                 self.logger.error(f"[Error]: An unexpected error occurred: {ex}")
-                exit()
+                exit(1)
 
     def split_package_information(self, packages: List[str]) -> List[namedtuple]:
         """Splits package information into a list of namedtuples with detailed version information.
@@ -493,7 +493,7 @@ class PackageHandler:
             self.logger.error(f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
             self.logger.error("[Error]: Standard Error:")
             self.logger.error(ex.stderr)
-            exit(1)  # TODO: zu raises() umwandeln, für alle
+            exit(1)
         except PermissionError:
             self.logger.error(
                 "[Error]: Permission denied. Are you sure you have the necessary permissions to run this command?"

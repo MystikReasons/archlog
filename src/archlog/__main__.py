@@ -15,7 +15,7 @@ def main():
     packages_to_update = package_handler.get_upgradable_packages()
     if not packages_to_update:
         logger.info("No packages to upgrade")
-        exit()
+        exit(1)
 
     max_package_name_length = max(len(package.package_name) for package in packages_to_update)
     max_package_current_version = max(len(package.current_version) for package in packages_to_update)
