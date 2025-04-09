@@ -66,9 +66,10 @@ def main():
             logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
     logger.info("--------------------")
 
-    result = collect_changelog_data(selected_packages, package_handler, config_handler)
+    for package in selected_packages:
+        logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
+        package_changelog = collect_changelog_data(package, package_handler, config_handler)
 
-    for package, package_changelog in result:
         if package_changelog:
             logger.info("Changelog:")
             for message, url, *_ in package_changelog:

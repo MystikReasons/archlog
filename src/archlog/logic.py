@@ -1,4 +1,4 @@
-def collect_changelog_data(packages, package_handler, config_handler):
+def collect_changelog_data(package, package_handler, config_handler):
     """Collects changelog data for a list of packages using the provided handler.
 
     For each package:
@@ -16,11 +16,7 @@ def collect_changelog_data(packages, package_handler, config_handler):
     :return: List of tuples, each containing a package and its changelog.
     :rtype: list[tuple[Package, Optional[list[tuple[str, str, str, str, str, str]]]]]
     """
-    results = []
+    changelog = package_handler.get_package_changelog(package)
+    config_handler.write_changelog(package, changelog)
 
-    for package in packages:
-        changelog = package_handler.get_package_changelog(package)
-        config_handler.write_changelog(package, changelog)
-        results.append((package, changelog))
-
-    return results
+    return changelog
