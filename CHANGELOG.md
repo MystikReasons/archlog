@@ -3,6 +3,7 @@
 ### Features and enhancements
 
 - **General** Updated README and pyproject.toml
+- **README** Added update section to README
 
 ### Bug fixes
 

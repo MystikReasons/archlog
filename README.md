@@ -17,6 +17,7 @@ Currently, only official Arch packages are supported. AUR, Flatpak, and other so
   * [Minor release example](#minor-release-example)
   * [Major release example](#major-release-example)
   * [Installation](#installation)
+  * [Update](#update)
   * [Development Setup](#development-setup)
   * [Support](#support)
 <!-- TOC -->
@@ -126,6 +127,11 @@ pipx ensurepath
 Then restart your terminal or run:
 ```bash
 source ~/.bashrc   # or ~/.zshrc depending on your shell
+```
+
+## Update
+
+To update, you can download or pull the appropriate branch from this repository, and run `pipx install . --force`.
 ```
 
 ## Development Setup
