@@ -132,7 +132,6 @@ source ~/.bashrc   # or ~/.zshrc depending on your shell
 ## Update
 
 To update, you can download or pull the appropriate branch from this repository, and run `pipx install . --force`.
-```
 
 ## Development Setup
 
