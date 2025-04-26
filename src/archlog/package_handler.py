@@ -77,7 +77,6 @@ class PackageHandler:
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True,  # This will prevent the output from doing this: "b'PACKAGE"
-                    check=True,  # This will raise an exception if the command fails
                 )
 
                 packages_to_update = update_process.stdout.splitlines()

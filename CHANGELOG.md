@@ -12,6 +12,7 @@
 - **Web Scraper** Make sure that playwright will be installed when using the tool for the first time
 - **Web Scraper** Quit the program directly if the architecture-wording is not set correctly due to different system language
 - **Output** Make sure that the changelog is printed for each package itself instead of the entire changelog at the end
+- **Web Scraper** Do not throw a CalledProcessError when `checkupdates` does not find any upgradable packages 
 
 # 1.0.6 (2025-04-08)
 
