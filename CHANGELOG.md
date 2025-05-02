@@ -5,6 +5,7 @@
 - **General** Updated README and pyproject.toml
 - **README** Added update section to README
 - **General** Replaced sys.exit with exit since we log either way
+- **General** Move logging into a separate file
 
 ### Bug fixes
 

@@ -1,9 +1,8 @@
 from typing import Optional, Dict, Any, List, Tuple, NamedTuple
-from pathlib import Path
-import logging
 import json
 import os
-from datetime import datetime
+from pathlib import Path
+from archlog.utils import get_datetime_now
 
 
 DEFAULT_CONFIG_FILENAME = "config.json"
@@ -28,69 +27,27 @@ def get_config_path(filename: str) -> Path:
     return Path(os.getenv("XDG_CONFIG_HOME", "~/.config")).expanduser() / "archlog" / filename
 
 
-def get_logs_path() -> Path:
-    return Path(os.getenv("XDG_STATE_HOME", "~/.local/state")).expanduser() / "archlog" / "logs"
-
-
 def get_changelog_path() -> Path:
     return Path.home() / "archlog"
 
 
 class ConfigHandler:
-    def __init__(self, config_path: Optional[Path] = None) -> None:
+    def __init__(self, logger, config_path: Optional[Path] = None) -> None:
         """Constructor method"""
         self.config_path = Path(config_path or get_config_path(DEFAULT_CONFIG_FILENAME))
-        self.logs_path = get_logs_path()
         self.changelog_path = get_changelog_path()
+
+        self.logger = logger
 
         # Ensure directories exist
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        self.logs_path.mkdir(parents=True, exist_ok=True)
         self.changelog_path.mkdir(parents=True, exist_ok=True)
 
-        self.datetime_now = datetime.now()
-        self.dt_string_logging = self.datetime_now.strftime("%d-%m-%Y_%H-%M-%S")
-        self.dt_string_changelog = self.datetime_now.strftime("changelog-%d-%m-%Y.json")
-
-        self.setup_logging()
+        self.dt_string_changelog = get_datetime_now("changelog-%d-%m-%Y.json")
         self.config = self.load_config()
 
         self.logger.info(f"[Info]: Config file:         {self.config_path}")
-        self.logger.info(f"[Info]: Log directory:       {self.logs_path}")
-        self.logger.info(f"[Info]: Changelog directory: {self.changelog_path}\n")
-
-    def setup_logging(self) -> None:
-        """
-        Sets up logging for the application by configuring file and console handlers.
-
-        The function initializes logging to a file and outputs logs to the console.
-        Handles potential errors during the setup, such as file access issues.
-
-        :raises FileNotFoundError: If the log file path is invalid or cannot be found.
-        :raises PermissionError: If there are insufficient permissions to create or write to the log file.
-        :raises Exception: For any other errors encountered during logger setup.
-        :return: None
-        """
-        try:
-            logfile = self.logs_path / f"{self.dt_string_logging}.log"
-            logging.basicConfig(
-                filename=logfile,
-                format="%(asctime)s %(message)s",
-                filemode="w",
-            )
-
-            self.logger = logging.getLogger()
-            self.logger.setLevel(logging.DEBUG)
-
-            # Output the logging also to the console
-            stream = logging.StreamHandler()
-            stream.setLevel(logging.INFO)
-            streamformat = logging.Formatter("%(message)s")
-            stream.setFormatter(streamformat)
-            self.logger.addHandler(stream)
-        except Exception as ex:
-            print(f"[Error]: Failed to set up logger: {ex}")
-            return None
+        self.logger.info(f"[Info]: Changelog directory: {self.changelog_path}")
 
     def load_config(self) -> Dict[str, Any]:
         """

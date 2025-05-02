@@ -1,11 +1,16 @@
 from archlog.config_handler import ConfigHandler
 from archlog.package_handler import PackageHandler
+from archlog.logger import LoggerManager
 from archlog.logic import collect_changelog_data
 
 
 def main():
-    config_handler = ConfigHandler()
-    logger = config_handler.logger
+    logger_manager = LoggerManager()
+    logger = logger_manager.get_logger()
+    config_handler = ConfigHandler(logger)
+
+    logger.info(f"[Info]: Log directory:       {logger_manager.get_logs_path()}\n")
+
     package_handler = PackageHandler(logger, config_handler)
 
     logger.info("archlog")
