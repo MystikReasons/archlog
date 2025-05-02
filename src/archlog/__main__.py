@@ -8,7 +8,7 @@ def main():
     logger = config_handler.logger
     package_handler = PackageHandler(logger, config_handler)
 
-    logger.info("Package Changelog Viewer")
+    logger.info("archlog")
     logger.info("------------------------")
     logger.debug("Logger is set up")
 
