@@ -1,4 +1,4 @@
-# 1.0.7 ()
+# 1.0.7 (2025-05-04)
 
 ### Features and enhancements
 
@@ -6,6 +6,8 @@
 - **README** Added update section to README
 - **General** Replaced sys.exit with exit since we log either way
 - **General** Move logging into a separate file
+- **Output** Added option to open changelog file after generation
+- **General** Refactoring, moved code, cleanups
 
 ### Bug fixes
 

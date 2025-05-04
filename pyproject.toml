@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "archlog"
-version = "1.0.6"
+version = "1.0.7"
 description = "View and track Arch Linux package changelogs with version and upstream updates"
 keywords = ["arch", "archlinux", "changelog", "packages", "pacman", "version-tracking", "linux", "tag"]
 readme = "README.md"
@@ -31,10 +31,10 @@ optional-dependencies = { dev = [
 ] }
 
 [project.urls]
-Homepage = "https://github.com/MystikReasons/arch-changelog-viewer"
-Documentation = "https://github.com/MystikReasons/arch-changelog-viewer"
-Repository = "https://github.com/MystikReasons/arch-changelog-viewer.git"
-Issues = "https://github.com/MystikReasons/arch-changelog-viewer/issues"
+Homepage = "https://github.com/MystikReasons/archlog"
+Documentation = "https://github.com/MystikReasons/archlog"
+Repository = "https://github.com/MystikReasons/archlog.git"
+Issues = "https://github.com/MystikReasons/archlog/issues"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

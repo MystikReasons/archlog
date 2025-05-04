@@ -432,6 +432,7 @@ class PackageHandler:
 
             if package_changelog_temp:
                 package_changelog += package_changelog_temp
+
         # Check if the last intermediate tag is a major release
         elif second_compare_main != package.new_main:
             self.logger.info(f"[Info]: {package.new_version_altered} is a major release (after intermediate release)")
@@ -511,9 +512,9 @@ class PackageHandler:
         if not package_architecture:
             self.logger.error(
                 "[Error]: Couldn't find the package architecture in the output. "
-                "If your system language is not set to English, update the `architecture-wording` value "
+                "If your system language is not set to English, update the 'architecture-wording' value "
                 "in the config file to match the correct architecture label. "
-                "You can find it by running `sudo pacman -Q --info ANY-PACKAGE`. "
+                "You can find it by running 'sudo pacman -Q --info ANY-PACKAGE'. "
                 "The location of the config file is shown when you start the program."
             )
             exit(1)

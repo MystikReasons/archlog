@@ -1,14 +1,23 @@
+from typing import Optional
 import logging
-import os
 from pathlib import Path
+
 from archlog.utils import get_datetime_now
 
 
 class LoggerManager:
-    def __init__(self) -> None:
-        self.setup_logging(self.get_logs_path())
+    def __init__(self, logs_path: Optional[Path] = None) -> None:
+        """Constructor method"""
+        self.logs_path = logs_path or self.get_default_logs_path()
+        self.logs_path.mkdir(parents=True, exist_ok=True)
+        self.setup_logger(self.logs_path)
 
-    def setup_logging(self, logs_path: Path) -> None:
+    def get_default_logs_path(self) -> Path:
+        from archlog.path_manager import PathManager
+
+        return PathManager().get_logs_path()
+
+    def setup_logger(self, logs_path: Path) -> None:
         """
         Sets up logging for the application by configuring file and console handlers.
 
@@ -18,14 +27,10 @@ class LoggerManager:
         :raises Exception: For any other errors encountered during logger setup.
         :return: None
         """
-        self.dt_string_logging = get_datetime_now("%d-%m-%Y_%H-%M-%S")
-        self.logs_path = self.get_logs_path()
-
-        # Make sure that the directory exists
-        self.logs_path.mkdir(parents=True, exist_ok=True)
+        dt_string_logging = get_datetime_now("%Y-%m-%d_%H-%M-%S")
+        logfile = self.logs_path / f"{dt_string_logging}.log"
 
         try:
-            logfile = logs_path / f"{self.dt_string_logging}.log"
             logging.basicConfig(
                 filename=logfile,
                 format="%(asctime)s %(message)s",
@@ -41,12 +46,10 @@ class LoggerManager:
             stream_format = logging.Formatter("%(message)s")
             stream_handler.setFormatter(stream_format)
             self.logger.addHandler(stream_handler)
+
         except Exception as ex:
             print(f"[Error]: Failed to set up logger: {ex}")
             return None
-
-    def get_logs_path(self) -> Path:
-        return Path(os.getenv("XDG_STATE_HOME", "~/.local/state")).expanduser() / "archlog" / "logs"
 
     def get_logger(self) -> logging.Logger:
         return self.logger

@@ -1,8 +1,10 @@
-from typing import Optional, Dict, Any, List, Tuple, NamedTuple
+from typing import Dict, Any, List, Tuple, NamedTuple
 import json
 import os
 from pathlib import Path
+
 from archlog.utils import get_datetime_now
+from archlog.path_manager import PathManager
 
 
 DEFAULT_CONFIG_FILENAME = "config.json"
@@ -20,34 +22,43 @@ DEFAULT_CONFIG = {
         {"name": "gnome-unstable", "enabled": False},
         {"name": "kde-unstable", "enabled": False},
     ],
+    "paths": {
+        "config-dir": "~/.config/archlog",
+        "changelog-dir": "~/archlog/changelog",
+        "logs-dir": "~/.local/state/archlog/logs",
+    },
 }
 
 
-def get_config_path(filename: str) -> Path:
-    return Path(os.getenv("XDG_CONFIG_HOME", "~/.config")).expanduser() / "archlog" / filename
-
-
-def get_changelog_path() -> Path:
-    return Path.home() / "archlog"
-
-
 class ConfigHandler:
-    def __init__(self, logger, config_path: Optional[Path] = None) -> None:
+    def __init__(self, logger, config_filename: str = DEFAULT_CONFIG_FILENAME) -> None:
         """Constructor method"""
-        self.config_path = Path(config_path or get_config_path(DEFAULT_CONFIG_FILENAME))
-        self.changelog_path = get_changelog_path()
-
         self.logger = logger
+
+        default_path_manager = PathManager(DEFAULT_CONFIG["paths"])
+        self.config_path = default_path_manager.get_config_path(config_filename)
 
         # Ensure directories exist
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        self.changelog_path.mkdir(parents=True, exist_ok=True)
 
-        self.dt_string_changelog = get_datetime_now("changelog-%d-%m-%Y.json")
         self.config = self.load_config()
+        self.path_manager = PathManager(self.config.get("paths", {}))
+
+        user_paths = self.config.get("paths", {})
+        default_paths = DEFAULT_CONFIG["paths"]
+
+        if any(user_paths.get(key) != default_paths[key] for key in default_paths):
+            self.path_manager = PathManager(user_paths)
+            self.config_path = self.path_manager.get_config_path(config_filename)
+
+        self.changelog_filename = get_datetime_now("%Y-%m-%d-changelog.json")
+
+        self.changelog_path = self.path_manager.get_changelog_path()
+        self.changelog_path.mkdir(parents=True, exist_ok=True)
 
         self.logger.info(f"[Info]: Config file:         {self.config_path}")
         self.logger.info(f"[Info]: Changelog directory: {self.changelog_path}")
+        self.logger.info(f"[Info]: Logs directory:      {self.path_manager.get_logs_path()}")
 
     def load_config(self) -> Dict[str, Any]:
         """
@@ -73,11 +84,11 @@ class ConfigHandler:
     def initialize_changelog_file(self):
         """
         Initializes the changelog file by removing any existing file with the same name.
-        """
-        changelog_filename = self.changelog_path / self.dt_string_changelog
 
-        if os.path.exists(changelog_filename):
-            os.remove(changelog_filename)
+        :return: None
+        """
+        if os.path.exists(self.changelog_path / self.changelog_filename):
+            os.remove(self.changelog_path / self.changelog_filename)
 
     def write_changelog(
         self,
@@ -98,11 +109,9 @@ class ConfigHandler:
         :type package_changelog: List[Tuple[str, str, str, str, str]]
         :return: None
         """
-        changelog_filename = self.changelog_path / self.dt_string_changelog
-
-        if changelog_filename.exists():
+        if (self.changelog_path / self.changelog_filename).exists():
             try:
-                with open(changelog_filename, "r") as json_read_file:
+                with open(self.changelog_path / self.changelog_filename, "r") as json_read_file:
                     existing_data = json.load(json_read_file)
             except json.JSONDecodeError:
                 existing_data = {"packages": [], "changelog": {}}
@@ -208,5 +217,5 @@ class ConfigHandler:
             )
 
         # Write the updated website file data back to the file
-        with open(changelog_filename, "w", encoding="utf-8") as json_write_file:
+        with open(self.changelog_path / self.changelog_filename, "w", encoding="utf-8") as json_write_file:
             json.dump(existing_data, json_write_file, indent=4, ensure_ascii=False)

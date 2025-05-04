@@ -168,7 +168,7 @@ class WebScraper:
                 self.logger.info(f"[Info]: Website: {url} is reachable")
                 return True
             else:
-                self.logger.info(f"[Info]: Website: {url} returned status code {response.status_code}.")
+                self.logger.debug(f"[Debug]: Website: {url} returned status code {response.status_code}.")
                 return False
         except requests.RequestException as ex:
             self.logger.error(

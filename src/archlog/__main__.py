@@ -1,6 +1,9 @@
+import os
+import subprocess
+
+from archlog.logger_manager import LoggerManager
 from archlog.config_handler import ConfigHandler
 from archlog.package_handler import PackageHandler
-from archlog.logger import LoggerManager
 from archlog.logic import collect_changelog_data
 
 
@@ -9,7 +12,7 @@ def main():
     logger = logger_manager.get_logger()
     config_handler = ConfigHandler(logger)
 
-    logger.info(f"[Info]: Log directory:       {logger_manager.get_logs_path()}\n")
+    log_path = config_handler.path_manager.get_logs_path()
 
     package_handler = PackageHandler(logger, config_handler)
 
@@ -84,6 +87,35 @@ def main():
             logger.info(f"[Info]: No changelog for package: {package.package_name} found.")
 
         logger.info("--------------------------------")
+
+    open_changelog_input = input("Do you want to open the changelog file? [y]|[n]: ")
+
+    if open_changelog_input == "y":
+        open_file_with_default_app(
+            logger,
+            (config_handler.path_manager.get_changelog_path() / config_handler.path_manager.get_changelog_filename()),
+        )
+    elif open_changelog_input == "n":
+        pass
+    else:
+        logger.error(f"[Error]: Invalid input.")
+
+
+def open_file_with_default_app(logger, filepath: str) -> None:
+    "Opens a file with the default set application on Linux."
+    if not os.path.exists(filepath):
+        logger.error(f"[Error]: The file {filepath} does not exist.")
+        return
+
+    try:
+        subprocess.run(["xdg-open", filepath], check=True)
+    except FileNotFoundError:
+        logger.error(f"[Error]: 'xdg-open' is not installed.")
+    except subprocess.CalledProcessError:
+        logger.error(f"[Error]: Something went wrong while opening the file {filepath}")
+    except Exception as ex:
+        logger.error(f"[Error]: Unknown error: {ex}")
+
 
 if __name__ == "__main__":
     main()
