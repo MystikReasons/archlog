@@ -84,3 +84,6 @@ def main():
             logger.info(f"[Info]: No changelog for package: {package.package_name} found.")
 
         logger.info("--------------------------------")
+
+if __name__ == "__main__":
+    main()
