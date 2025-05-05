@@ -1,3 +1,11 @@
+# 1.0.8 ()
+
+### Features and enhancements
+
+- **README** Updated installation instruction
+
+### Bug fixes
+
 # 1.0.7 (2025-05-04)
 
 ### Features and enhancements

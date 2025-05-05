@@ -104,12 +104,25 @@ git clone "https://github.com/MystikReasons/archlog.git"
 
 Or download and extract via curl:
 ```bash
-curl -L "https://github.com/MystikReasons/archlog/archive/refs/heads/master.zip" -o "./archlog.zip" && unzip "./archlog.zip" -d "./archlog" && rm -rf "./archlog.zip"
+curl -L "https://github.com/MystikReasons/archlog/archive/refs/heads/master.zip" -o "./archlog.zip" \
+&& unzip "./archlog.zip" -d "." \
+&& mv "archlog-master" "archlog" \
+&& rm -rf "./archlog.zip"
+```
+
+Move into the newly created directory:
+```bash
+cd archlog
 ```
 
 Then install the tool using (pipx needs to be installed on your system):
 ```bash
 pipx install .
+```
+
+You can now remove the `archlog` folder if you wish too.
+```bash
+rm -r archlog
 ```
 
 Start the CLI with:
