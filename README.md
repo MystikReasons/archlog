@@ -115,7 +115,7 @@ Move into the newly created directory:
 cd archlog
 ```
 
-Then install the tool using (pipx needs to be installed on your system):
+Then install the tool using (`python-pipx` needs to be installed on your system):
 ```bash
 pipx install .
 ```
@@ -144,7 +144,11 @@ source ~/.bashrc   # or ~/.zshrc depending on your shell
 
 ## Update
 
-To update, you can download or pull the appropriate branch from this repository, and run `pipx install . --force`.
+To update, you can download or pull the appropriate branch from this repository, and run:
+```bash
+pipx install . --force
+``` 
+
 
 ## Development Setup
 
