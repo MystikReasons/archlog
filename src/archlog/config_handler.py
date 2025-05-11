@@ -1,6 +1,7 @@
 from typing import Dict, Any, List, Tuple, NamedTuple
 import json
 import os
+from copy import deepcopy
 from pathlib import Path
 
 from archlog.utils import get_datetime_now
@@ -8,26 +9,6 @@ from archlog.path_manager import PathManager
 
 
 DEFAULT_CONFIG_FILENAME = "config.json"
-DEFAULT_CONFIG = {
-    "architecture-wording": "Architecture",
-    "webscraper-delay": 3000,
-    "arch-repositories": [
-        {"name": "extra", "enabled": True},
-        {"name": "core", "enabled": True},
-        {"name": "multilib", "enabled": True},
-        {"name": "core-testing", "enabled": False},
-        {"name": "extra-testing", "enabled": False},
-        {"name": "multilib-testing", "enabled": False},
-        {"name": "testing", "enabled": False},
-        {"name": "gnome-unstable", "enabled": False},
-        {"name": "kde-unstable", "enabled": False},
-    ],
-    "paths": {
-        "config-dir": "~/.config/archlog",
-        "changelog-dir": "~/archlog/changelog",
-        "logs-dir": "~/.local/state/archlog/logs",
-    },
-}
 
 
 class ConfigHandler:
@@ -35,24 +16,19 @@ class ConfigHandler:
         """Constructor method"""
         self.logger = logger
 
-        default_path_manager = PathManager(DEFAULT_CONFIG["paths"])
-        self.config_path = default_path_manager.get_config_path(config_filename)
+        self.default_config = self.load_default_config()
 
-        # Ensure directories exist
+        default_path_manager = PathManager(self.default_config["paths"])
+        self.config_path = default_path_manager.get_config_path(config_filename)
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.config = self.load_config()
-        self.path_manager = PathManager(self.config.get("paths", {}))
 
         user_paths = self.config.get("paths", {})
-        default_paths = DEFAULT_CONFIG["paths"]
-
-        if any(user_paths.get(key) != default_paths[key] for key in default_paths):
-            self.path_manager = PathManager(user_paths)
-            self.config_path = self.path_manager.get_config_path(config_filename)
+        self.path_manager = PathManager(user_paths)
+        self.config_path = self.path_manager.get_config_path(config_filename)
 
         self.changelog_filename = get_datetime_now("%Y-%m-%d-changelog.json")
-
         self.changelog_path = self.path_manager.get_changelog_path()
         self.changelog_path.mkdir(parents=True, exist_ok=True)
 
@@ -60,9 +36,24 @@ class ConfigHandler:
         self.logger.info(f"[Info]: Changelog directory: {self.changelog_path}")
         self.logger.info(f"[Info]: Logs directory:      {self.path_manager.get_logs_path()}")
 
+    def load_default_config(self) -> Dict[str, Any]:
+        """
+        Loads the default configuration supplied with the package from a JSON file.
+
+        :return: The loaded default configuration as a dictionary.
+        :rtype: Dict[str, Any]
+        """
+        import importlib.resources as config_resources
+
+        with config_resources.files("archlog").joinpath("_resources/config.json").open("r", encoding="utf-8") as config:
+            return json.load(config)
+
     def load_config(self) -> Dict[str, Any]:
         """
         Loads the configuration from a JSON file.
+        It also checks if there are new missing configuration values which exist in the default config
+        but not in the user config. If it finds missing configuration values, it will add them to the
+        user config file.
 
         :raises FileNotFoundError: If the configuration file does not exist, logs an error and returns None.
         :return: The loaded configuration as a dictionary, or None if the file is not found.
@@ -71,15 +62,22 @@ class ConfigHandler:
         if not self.config_path.exists():
             self.logger.debug(f"[Debug]: Config file not found → creating default: {self.config_path}")
             with open(self.config_path, "w", encoding="utf-8") as write_config_file:
-                json.dump(DEFAULT_CONFIG, write_config_file, indent=2)
+                json.dump(self.default_config, write_config_file, indent=2)
 
         try:
             with open(self.config_path, "r", encoding="utf-8") as read_config_file:
-                return json.load(read_config_file)
+                user_config = json.load(read_config_file)
         except Exception as ex:
             self.logger.error(f"[Error]: Failed to load config: {ex}")
             exit(1)
-        return config
+
+        # Check if the default config file has new entries which the current user config file does not have
+        if self.merge_config(self.default_config, user_config):
+            self.logger.info(f"[Info]: Adding missing config values from default config file.")
+            with open(self.config_path, "w", encoding="utf-8") as write_config_file:
+                json.dump(user_config, write_config_file, indent=2)
+
+        return user_config
 
     def initialize_changelog_file(self):
         """
@@ -89,6 +87,25 @@ class ConfigHandler:
         """
         if os.path.exists(self.changelog_path / self.changelog_filename):
             os.remove(self.changelog_path / self.changelog_filename)
+
+    def merge_config(self, default_config: Dict[str, Any], user_config: Dict[str, Any]) -> bool:
+        """
+        Recursively adds missing keys from the default configuration into the user configuration.
+
+        :param default_config: The complete default configuration
+        :param user_config: The loaded user configuration
+        :return: True if any values were added or changed
+        """
+        updated = False
+        for key, value in default_config.items():
+            if key not in user_config:
+                user_config[key] = deepcopy(value)
+                updated = True
+            elif isinstance(value, dict) and isinstance(user_config[key], dict):
+                if self.merge_config(value, user_config[key]):
+                    updated = True
+
+        return updated
 
     def write_changelog(
         self,

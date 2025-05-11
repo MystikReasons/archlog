@@ -3,6 +3,7 @@
 ### Features and enhancements
 
 - **README** Updated installation instruction
+- **Config** Remove hardcoded default config and instead load the config from the supplied default config file
 
 ### Bug fixes
 
