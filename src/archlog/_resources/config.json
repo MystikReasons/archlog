@@ -11,5 +11,10 @@
         {"name": "testing", "enabled": false},
         {"name": "gnome-unstable", "enabled": false},
         {"name": "kde-unstable", "enabled": false}
-    ]
+    ],
+    "paths": {
+        "config-dir": "~/.config/archlog",
+        "changelog-dir": "~/archlog/changelog",
+        "logs-dir": "~/.local/state/archlog/logs"
+    }
 }
