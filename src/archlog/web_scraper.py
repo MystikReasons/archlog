@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any, List
 from playwright.sync_api import sync_playwright
 from playwright.sync_api import TimeoutError
 from bs4 import BeautifulSoup
-import requests
+import httpx
 import sys
 
 
@@ -14,12 +14,12 @@ class WebScraper:
         self.logger = logger
         self.config = config
 
-        self._ensure_playwright_installed()
+        self.ensure_playwright_installed()
 
         self.playwright = sync_playwright().start()
         self.browser = self.playwright.chromium.launch(headless=True)
 
-    def _ensure_playwright_installed(self) -> None:
+    def ensure_playwright_installed(self) -> None:
         """Checks and installs the required playwright browsers if missing.
 
         Playwright will be removed in the future, for the meantime this function is needed
@@ -152,9 +152,9 @@ class WebScraper:
         return result_rows
 
     def check_website_availabilty(self, url: str) -> bool:
-        """Checks the availability of a website by sending an HTTP GET request.
+        """Checks the availability of a website by sending an HTTP GET request with httpx.
         This function sends a GET request to the specified URL and checks the HTTP status code of the response.
-        If the status code is 200, it indicates that the website is reachable. Any other status code indicates
+        If the status code is 2xx, it indicates that the website is reachable. Any other status code indicates
         that the website may be down or returning an error.
 
         :param url: The URL of the website to check.
@@ -163,17 +163,12 @@ class WebScraper:
         :rtype: bool
         """
         try:
-            response = requests.get(url)
-            if response.status_code == 200:
-                self.logger.info(f"[Info]: Website: {url} is reachable")
-                return True
-            else:
-                self.logger.debug(f"[Debug]: Website: {url} returned status code {response.status_code}.")
-                return False
-        except requests.RequestException as ex:
-            self.logger.error(
-                f"[Error]: An error occured during checking availability of website {url}. Error code: {ex}"
-            )
+            response = httpx.get(url)
+            response.raise_for_status()  # Raise an exception for any response which are not 2xx success code
+            self.logger.info(f"[Info]: Website: {url} is reachable")
+            return True
+        except httpx.HTTPError as ex:
+            self.logger.debug(f"[Debug]: HTTP exception for {url} - Error code: {ex}")
             return False
 
     def close_browser(self) -> None:

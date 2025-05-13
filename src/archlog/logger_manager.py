@@ -12,6 +12,9 @@ class LoggerManager:
         self.logs_path.mkdir(parents=True, exist_ok=True)
         self.setup_logger(self.logs_path)
 
+        # Change the logging level of httpx from INFO to WARNING to reduce log messages.
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+
     def get_default_logs_path(self) -> Path:
         from archlog.path_manager import PathManager
 

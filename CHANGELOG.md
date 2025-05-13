@@ -4,6 +4,7 @@
 
 - **README** Updated installation instruction
 - **Config** Remove hardcoded default config and instead load the config from the supplied default config file
+- **Web Scraper** Replace requests with httpx for potential future async operation
 
 ### Bug fixes
 
