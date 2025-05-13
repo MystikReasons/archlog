@@ -705,7 +705,7 @@ class PackageHandler:
         reachable_repository = []
         for repository in enabled_repositories:
             possible_url = (
-                "https://archlinux.org/packages/" + repository + "/" + package_architecture + "/" + package_name
+                "https://archlinux.org/packages/" + repository + "/" + package_architecture + "/" + package_name + "/"
             )
 
             if self.web_scraper.check_website_availabilty(possible_url):

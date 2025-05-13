@@ -9,6 +9,7 @@
 ### Bug fixes
 
 - **Config** Add default paths to config and move config into archlog/ to be correctly included with the installation
+- **Web Scraper** Fixed missing forward slash in URL which caused httpx to throw a 301 HTTP error code
 
 # 1.0.7 (2025-05-04)
 
