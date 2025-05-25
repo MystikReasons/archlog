@@ -6,11 +6,11 @@
 - **Config** Remove hardcoded default config and instead load the config from the supplied default config file
 - **Web Scraper** Replace requests with httpx for potential future async operation
 - **Web Scraper** Replaced some functions that get HTML code from websites using playwright with httpx
+- **Web Scraper** Added `follow_redirects=True` for httpx to not throw errors when the URL is not exactly set up correctly
 
 ### Bug fixes
 
 - **Config** Add default paths to config and move config into archlog/ to be correctly included with the installation
-- **Web Scraper** Fixed missing forward slash in URL which caused httpx to throw a 301 HTTP error code
 
 # 1.0.7 (2025-05-04)
 

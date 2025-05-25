@@ -193,7 +193,7 @@ class WebScraper:
         :rtype: bool
         """
         try:
-            response = httpx.get(url)
+            response = httpx.get(url, follow_redirects=True)
             response.raise_for_status()  # Raise an exception for any response which are not 2xx success code
             self.logger.info(f"[Info]: Website: {url} is reachable")
             return True
