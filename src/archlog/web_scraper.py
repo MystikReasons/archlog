@@ -41,7 +41,37 @@ class WebScraper:
             self.logger.error(f"[Error]: Could not install playwright. Error message: {ex}")
 
     def fetch_page_content(self, url: str, retries: int = 3) -> Optional[str]:
-        """Fetches the full HTML content of a page using Playwright with retry logic.
+        """Fetches the full HTML content of a page using an HTTP GET request with httpx with retry logic.
+
+        This function sends a GET request to the specified URL and returns the response as text.
+        It retries the request on timeout or other errors, up to the specified number of attempts.
+
+        :param url: The target URL to fetch content from.
+        :type url: str
+        :param retries: Number of retry attempts in case of failure.
+        :type retries: int
+        :return: HTML content of the page as a string, or None if all attempts fail.
+        :rtype: Optional[str]
+        """
+        attempt = 0
+        while attempt < retries:
+            try:
+                response = httpx.get(url, follow_redirects=True, timeout=self.config.config.get("webscraper-delay"))
+                response.raise_for_status()
+                return response.text
+            except Exception as ex:
+                self.logger.debug(f"[Debug]: HTTP exception for {url} - Error code: {ex}")
+            finally:
+                attempt += 1
+
+        self.logger.error(
+            f"""[Error]: Failed to fetch content from {url} after {retries} retries. Please check the logs for further information."""
+        )
+        return None
+
+    def fetch_page_content_old(self, url: str, retries: int = 3) -> Optional[str]:
+        """Fetches the full HTML and Javascript content of a page using Playwright with retry logic.
+        This should only be used when dealing with sites that have Javascript content which should be fetched.
 
         Creates a new browser context and navigates to the given URL.
         Retries the request on timeout or other errors, up to the specified number of attempts.

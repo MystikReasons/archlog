@@ -5,6 +5,7 @@
 - **README** Updated installation instruction
 - **Config** Remove hardcoded default config and instead load the config from the supplied default config file
 - **Web Scraper** Replace requests with httpx for potential future async operation
+- **Web Scraper** Replaced some functions that get HTML code from websites using playwright with httpx
 
 ### Bug fixes
 

@@ -1,11 +1,12 @@
 from typing import Optional, List, Tuple, Dict, Any
 from collections import namedtuple
 from urllib.parse import urljoin, urlparse
-from archlog.web_scraper import WebScraper
 import re
 import subprocess
 import shutil
 from difflib import get_close_matches, SequenceMatcher
+
+from archlog.web_scraper import WebScraper
 
 
 class PackageHandler:
@@ -547,7 +548,7 @@ class PackageHandler:
         :rtype: Optional[Dict[str, Optional[str]]]
         """
         try:
-            response = self.web_scraper.fetch_page_content(url)
+            response = self.web_scraper.fetch_page_content_old(url)
             if not response:
                 self.logger.debug(f"[Debug]: No response received from {url}")
                 return None
@@ -732,6 +733,7 @@ class PackageHandler:
                 if the node 'Upstream URL:' cannot be located.
         :rtype: Optional[str]
         """
+
         response = self.web_scraper.fetch_page_content(url)
         if not response:
             self.logger.debug(f"[Debug]: No response received from {url}")
@@ -1157,7 +1159,7 @@ class PackageHandler:
                         self.logger.debug(f"[Debug]: Website: {kde_category_url} is not reachable")
                         break
 
-                    response = self.web_scraper.fetch_page_content(kde_category_url)
+                    response = self.web_scraper.fetch_page_content_old(kde_category_url)
                     if not response:
                         self.logger.debug(
                             f"[Debug]: No response received from {kde_category_url} while getting the KDE package changelog"
@@ -1196,7 +1198,7 @@ class PackageHandler:
                 # - https://invent.kde.org/plasma/baloo-widgets (wrong URL)
                 # This is why we look for a specific element on the website which only exists on the
                 # correct website.
-                response = self.web_scraper.fetch_page_content(kde_gitlab_url)
+                response = self.web_scraper.fetch_page_content_old(kde_gitlab_url)
                 if not response:
                     self.logger.debug(
                         f"[Debug]: No response received from {kde_gitlab_url} while getting the KDE package changelog"
