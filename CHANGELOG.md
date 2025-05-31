@@ -7,6 +7,7 @@
 - **Web Scraper** Replace requests with httpx for potential future async operation
 - **Web Scraper** Replaced some functions that get HTML code from websites using playwright with httpx
 - **Web Scraper** Added `follow_redirects=True` for httpx to not throw errors when the URL is not exactly set up correctly
+- **GitLab API** Initial version of the GitLab REST API implementation
 
 ### Bug fixes
 
