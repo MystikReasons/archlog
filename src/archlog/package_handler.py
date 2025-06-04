@@ -248,7 +248,11 @@ class PackageHandler:
             return None
 
         package_upstream_url = arch_package_overview_information[0]
-        package_source_files_url = self.archlinux_api.get_gitlab_package_url(package.package_name)
+        package_base = arch_package_overview_information[1] # For example bluez-libs is based on bluez
+
+        package_source_files_url = self.archlinux_api.get_gitlab_package_url(
+            package.package_name if not package_base else package_base
+        )
 
         self.logger.info(f"[Info]: Arch 'Source Files' URL: {package_source_files_url}")
 

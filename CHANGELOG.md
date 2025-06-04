@@ -15,6 +15,7 @@
 ### Bug fixes
 
 - **Config** Add default paths to config and move config into archlog/ to be correctly included with the installation
+- **Package Handler** Use package base instead of package name if available for Arch packages
 
 # 1.0.7 (2025-05-04)
 

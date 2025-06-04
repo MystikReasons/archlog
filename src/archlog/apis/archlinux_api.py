@@ -33,20 +33,20 @@ class ArchLinuxAPI:
             self.logger.error(f"[Error]: ArchLinux API request failed: {ex}")
             return None
 
-    def get_package_overview_site_information(self, package_name: str) -> Optional[List[Tuple[str, str]]]:
+    def get_package_overview_site_information(self, package_name: str) -> Optional[Tuple[str, str, str]]:
         """
         Returns the upstream URL and the package description from the Arch package overview page.
         Example URL of Arch package overview page: https://archlinux.org/packages/extra/x86_64/bluez/
 
         :param package_name: The package name of the official Arch package
         :type package_name: str
-        :return: [0] Upstream URL, [1] package description
-        :rtype: Optional[Tuple[str, str]]
+        :return: [0] Upstream URL, [1] package base, [2] package description
+        :rtype: Optional[Tuple[str, str, str]]
         """
         response = self.__get(package_name)
         if response:
             result = response.get("results", "")[0]
-            return [result.get("url", ""), result.get("pkgdesc", "")]
+            return [result.get("url", ""), result.get("pkgbase"), result.get("pkgdesc", "")]
         else:
             return None
 
