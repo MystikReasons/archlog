@@ -9,6 +9,7 @@
 - **Web Scraper** Added `follow_redirects=True` for httpx to not throw errors when the URL is not exactly set up correctly
 - **GitLab API** Initial version of the GitLab REST API implementation
 - **ArchLinux API** Initial version of the ArchLinux API implementation
+- **Package Handler** Replace complicated arch package name extraction with the local package name
 
 ### Bug fixes
 

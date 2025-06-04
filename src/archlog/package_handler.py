@@ -246,10 +246,6 @@ class PackageHandler:
         if not package_source_files_url:
             return None
 
-        # TODO: Check if the source files (PKGBUILD, etc.) did receive some updates beside pkver, pkgrel, etc...
-        # Always extract the package name from Arch's source control repository.
-        # Example: https://gitlab.archlinux.org/archlinux/packaging/packages/nss -> nss
-        arch_package_name = urlparse(package_source_files_url).path.rstrip("/").split("/")[-1]
 
         # Check if there were multiple releases on Arch side (either major or minor)
         # This will check the current local version with the first intermediate tag and then it will shift.
@@ -259,7 +255,7 @@ class PackageHandler:
         arch_package_tags = self.get_package_tags(package_source_files_url + "/-/tags")
 
         if not arch_package_tags:
-            self.logger.error(f"[Error]: {arch_package_name}: Couldn't find any arch package tags")
+            self.logger.error(f"[Error]: {package.package_name}: Couldn't find any arch package tags")
             return None
 
         intermediate_tags = self.find_intermediate_tags(arch_package_tags, package.current_version, package.new_version)
@@ -305,7 +301,7 @@ class PackageHandler:
                 package,
                 package.current_version_altered,
                 package.new_version_altered,
-                arch_package_name,
+                package.package_name,
                 package.new_version_altered,
             )
 
