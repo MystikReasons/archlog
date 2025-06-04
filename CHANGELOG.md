@@ -8,6 +8,7 @@
 - **Web Scraper** Replaced some functions that get HTML code from websites using playwright with httpx
 - **Web Scraper** Added `follow_redirects=True` for httpx to not throw errors when the URL is not exactly set up correctly
 - **GitLab API** Initial version of the GitLab REST API implementation
+- **ArchLinux API** Initial version of the ArchLinux API implementation
 
 ### Bug fixes
 
