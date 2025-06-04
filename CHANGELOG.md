@@ -10,6 +10,7 @@
 - **GitLab API** Initial version of the GitLab REST API implementation
 - **ArchLinux API** Initial version of the ArchLinux API implementation
 - **Package Handler** Replace complicated arch package name extraction with the local package name
+- **Package Handler** ArchLinux API: First usage implementation
 
 ### Bug fixes
 

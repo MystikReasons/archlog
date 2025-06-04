@@ -7,6 +7,7 @@ import shutil
 from difflib import get_close_matches, SequenceMatcher
 
 from archlog.web_scraper import WebScraper
+from archlog.apis.archlinux_api import ArchLinuxAPI
 
 
 class PackageHandler:
@@ -24,6 +25,7 @@ class PackageHandler:
         self.logger = logger
         self.config = config
         self.web_scraper = WebScraper(self.logger, self.config)
+        self.archlinux_api = ArchLinuxAPI(self.logger)
         self.enabled_repositories = []
         self.PackageInfo = namedtuple(
             "PackageInfo",
@@ -236,16 +238,19 @@ class PackageHandler:
             + "/"
             + package.package_name
         )
-        package_upstream_url = self.get_package_upstream_url(arch_package_url)
 
-        if not package_upstream_url:
+        arch_package_overview_information = self.archlinux_api.get_package_overview_site_information(
+            package.package_name
+        )
+
+        if not all(arch_package_overview_information):
+            self.logger.error(f"[Error]: Couldn't extract all required information from {arch_package_url}.")
             return None
 
-        package_source_files_url = self.get_package_source_files_url(arch_package_url)
+        package_upstream_url = arch_package_overview_information[0]
+        package_source_files_url = self.archlinux_api.get_gitlab_package_url(package.package_name)
 
-        if not package_source_files_url:
-            return None
-
+        self.logger.info(f"[Info]: Arch 'Source Files' URL: {package_source_files_url}")
 
         # Check if there were multiple releases on Arch side (either major or minor)
         # This will check the current local version with the first intermediate tag and then it will shift.
@@ -467,7 +472,7 @@ class PackageHandler:
 
     def get_package_architecture(self, package_name: str) -> str:
         """Retrieves the architecture of a specified package using `pacman`.
-        This function runs `sudo pacman -Q --info <package_name>` to obtain information about the
+        This function runs `pacman -Q --info <package_name>` to obtain information about the
         package, then parses the output to extract the architecture of the package.
 
         :param package_name: The name of the upgradable package whose architecture should be retrieved.
@@ -720,35 +725,15 @@ class PackageHandler:
         else:
             return reachable_repository
 
-    def get_package_upstream_url(self, url: str) -> Optional[str]:
-        """Retrieves the upstream URL for a package from a specified Arch Linux package page.
-
-        :param url: The URL of the Arch Linux package page to scrape for the upstream URL.
-        :type url: str
-        :return: The upstream URL as a string if found, or None if the URL is not available or
-                if the node 'Upstream URL:' cannot be located.
-        :rtype: Optional[str]
-        """
-
-        response = self.web_scraper.fetch_page_content(url)
-        if not response:
-            self.logger.debug(f"[Debug]: No response received from {url}")
-            return None
-
-        upstream_link = self.web_scraper.find_element(response, "th", string="Upstream URL:")
-        if upstream_link:
-            upstream_url = upstream_link.find_next_sibling("td").find("a").get("href")
-            self.logger.debug(f"[Debug]: Package upstream URL: {upstream_url}")
-            return upstream_url
-        else:
-            self.logger.error(f"[Error]: Couldn't find node 'Upstream URL:' on {url}")
-            return None
-
     def get_package_source_files_url(self, url: str) -> Optional[str]:
         """Retrieves the URL for the source files of a package from a webpage.
         This function sends an HTTP GET request to the specified URL, parses the HTML content to find a link with the
         text 'Source Files', and returns the URL of that link. If the 'Source Files' link is not found, the function
         returns `None`.
+
+        04.06.2025:
+        This function is currently not in use. It is still here as a backup if the current simple implementation 
+        which replaced this function is not enough
 
         :param url: The URL of the webpage to retrieve and parse.
         :type url: str
