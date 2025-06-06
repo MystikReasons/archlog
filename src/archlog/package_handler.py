@@ -7,6 +7,7 @@ import shutil
 from difflib import get_close_matches, SequenceMatcher
 
 from archlog.web_scraper import WebScraper
+from archlog.apis.gitlab_api import GitLabAPI
 from archlog.apis.archlinux_api import ArchLinuxAPI
 
 
@@ -25,6 +26,7 @@ class PackageHandler:
         self.logger = logger
         self.config = config
         self.web_scraper = WebScraper(self.logger, self.config)
+        self.gitlab_api = GitLabAPI(self.logger)
         self.archlinux_api = ArchLinuxAPI(self.logger)
         self.enabled_repositories = []
         self.PackageInfo = namedtuple(
@@ -261,7 +263,9 @@ class PackageHandler:
         # Example: current version -> 1st intermediate version (minor) -> 2nd intermediate version (major) -> ...
         # 1st iteration: current version -> 1st intermediate version (minor)
         # 2nd iteration: 1st intermediate version (minor) -> 2nd intermediate version (major)
-        arch_package_tags = self.get_package_tags(package_source_files_url + "/-/tags")
+        arch_package_tags = self.get_package_tags(
+            package_source_files_url + "/-/tags", package.package_name if not package_base else package_base
+        )
 
         if not arch_package_tags:
             self.logger.error(f"[Error]: {package.package_name}: Couldn't find any arch package tags")
@@ -763,7 +767,7 @@ class PackageHandler:
             self.logger.error(f"[Error]: An unexpected error occurred while parsing the HTML: {ex}")
             return None
 
-    def get_package_tags(self, url: str) -> List[Tuple[str, str]]:
+    def get_package_tags(self, url: str, package_name: str) -> List[Tuple[str, str]]:
         """Retrieves release tags and their associated timestamps from a source code hosting website.
         This function sends an HTTP GET request to the specified URL, parses the HTML content to find
         SVG elements representing tags and their corresponding timestamps. It then returns a list of tuples
@@ -772,8 +776,10 @@ class PackageHandler:
 
         :param url: The URL of the webpage to retrieve and parse.
         :type url: str
+        :param package_name: Name of the Arch package
+        :type package_name: str
         :return: A list of tuples where each tuple contains a release tag and its associated timestamp.
-                 The timestamp has the format: 2024-12-30T19:45:26Z
+                 The timestamp has the format: 2024-12-30T19:45:26.000Z
                  If an error occurs during the request or parsing, or if no relevant data is found, None is returned.
         :rtype: List[Tuple[str, str]]
         """
@@ -783,7 +789,16 @@ class PackageHandler:
                 self.logger.debug(f"[Debug]: No response received from {url}")
                 return None
 
-            if "github" in url:
+            if "gitlab" in url:
+                combined_info = self.gitlab_api.get_package_tags(
+                    self.gitlab_api.base_urls["Arch"], "archlinux/packaging/packages/" + package_name
+                )
+
+                if not combined_info:
+                    self.logger.debug(f"[Debug]: No release tags found in {url}")
+                    return None
+
+            elif "github" in url:
                 # TODO: Currently it does not search for further tags if the Github page has a "Next" button.
                 release_tags_raw = self.web_scraper.find_all_elements(response, "a", class_="Link--primary")
 
@@ -811,16 +826,17 @@ class PackageHandler:
                     self.logger.debug(f"[Debug]: No raw time tags found in {url}")
                     return None
 
-            time_tags = [tag["datetime"] for tag in time_tags_raw]
-            combined_info = list(zip(release_tags, time_tags))
+            if "gitlab" not in url:
+                time_tags = [tag["datetime"] for tag in time_tags_raw]
+                combined_info = list(zip(release_tags, time_tags))
 
-            for index, (release, time) in enumerate(combined_info):
+            for index, (tag, creation_date) in enumerate(combined_info):
                 # Some Arch packages do have versions that look like this: 1:1.16.5-2
                 # On their repository host (GitLab) the tags do like this: 1-1.16.5-2
                 # In order to make a tag compare on GitLab, transform '1:' to '1-'
-                transformed_release = release.replace("1:", "1-")
-                self.logger.debug(f"[Debug]: Release tag: {transformed_release} Time tag: {time}")
-                combined_info[index] = (transformed_release, time)
+                transformed_tag = tag.replace("1:", "1-")
+                self.logger.debug(f"[Debug]: Release tag: {transformed_tag} Creation date: {creation_date}")
+                combined_info[index] = (transformed_release, creation_date)
 
             return combined_info
         except Exception as ex:

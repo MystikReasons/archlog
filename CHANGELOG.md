@@ -12,6 +12,7 @@
 - **Package Handler** Replace complicated arch package name extraction with the local package name
 - **Package Handler** ArchLinux API: First usage implementation
 - **GitLab API** Add more logging output, get_commits_between_tags also send back the commit URL now and make the get function private
+- **Package Handler** Replace current GitLab logic in get_package_tags() with the new GitLab API logic
 
 ### Bug fixes
 
