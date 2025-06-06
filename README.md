@@ -104,7 +104,7 @@ git clone "https://github.com/MystikReasons/archlog.git"
 
 Or download and extract via curl:
 ```bash
-curl -L "https://github.com/MystikReasons/archlog/archive/refs/heads/master.zip" -o "./archlog.zip" \ && unzip "./archlog.zip" -d "." \ && mv "archlog-master" "archlog" \ && rm -rf "./archlog.zip"
+rm -rf archlog && curl -L "https://github.com/MystikReasons/archlog/archive/refs/heads/master.zip" -o "./archlog.zip" && unzip "./archlog.zip" -d "." && mv "archlog-master" "archlog" && rm -rf "./archlog.zip"
 ```
 
 Move into the newly created directory:
