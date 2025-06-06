@@ -104,10 +104,7 @@ git clone "https://github.com/MystikReasons/archlog.git"
 
 Or download and extract via curl:
 ```bash
-curl -L "https://github.com/MystikReasons/archlog/archive/refs/heads/master.zip" -o "./archlog.zip" \
-&& unzip "./archlog.zip" -d "." \
-&& mv "archlog-master" "archlog" \
-&& rm -rf "./archlog.zip"
+curl -L "https://github.com/MystikReasons/archlog/archive/refs/heads/master.zip" -o "./archlog.zip" \ && unzip "./archlog.zip" -d "." \ && mv "archlog-master" "archlog" \ && rm -rf "./archlog.zip"
 ```
 
 Move into the newly created directory:
@@ -144,11 +141,15 @@ source ~/.bashrc   # or ~/.zshrc depending on your shell
 
 ## Update
 
-To update, you can download or pull the appropriate branch from this repository, and run:
+To update, you can download or pull the appropriate branch from this repository, and run the following command inside the downloaded archlog folder:
 ```bash
 pipx install . --force
 ``` 
 
+You can now remove the `archlog` folder if you wish too.
+```bash
+rm -r archlog
+```
 
 ## Development Setup
 

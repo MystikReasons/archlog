@@ -836,7 +836,7 @@ class PackageHandler:
                 # In order to make a tag compare on GitLab, transform '1:' to '1-'
                 transformed_tag = tag.replace("1:", "1-")
                 self.logger.debug(f"[Debug]: Release tag: {transformed_tag} Creation date: {creation_date}")
-                combined_info[index] = (transformed_release, creation_date)
+                combined_info[index] = (transformed_tag, creation_date)
 
             return combined_info
         except Exception as ex:
