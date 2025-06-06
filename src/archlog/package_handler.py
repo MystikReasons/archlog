@@ -981,9 +981,9 @@ class PackageHandler:
 
         if "major" in release_type:
             upstream_package_tags = (
-                self.get_package_tags(source.rstrip("/") + "/tags")
+                self.get_package_tags(source.rstrip("/") + "/tags", package_name)
                 if "github" in source
-                else self.get_package_tags(source.rstrip("/") + "/-/tags")
+                else self.get_package_tags(source.rstrip("/") + "/-/tags", package_name)
             )
 
             if upstream_package_tags:
