@@ -224,17 +224,17 @@ class PackageHandler:
         # https://archlinux.org/packages/core/any/automake/
         package_architecture = self.get_package_architecture(package.package_name)
 
-        package_repository = self.get_package_repository(
+        arch_package_repository = self.get_package_repository(
             self.enabled_repositories, package.package_name, package_architecture
         )
 
-        if not package_repository:
+        if not arch_package_repository:
             return None
 
         # TODO: package_repository should not be an array anymore in the future
         arch_package_url = (
             "https://archlinux.org/packages/"
-            + package_repository[0]
+            + arch_package_repository[0]
             + "/"
             + package_architecture
             + "/"
