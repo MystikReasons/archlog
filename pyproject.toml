@@ -23,6 +23,7 @@ dependencies = [
     "beautifulsoup4==4.13.3",
     "httpx==0.28.1",
     "playwright==1.51.0",
+    "rapidfuzz==3.13.0",
 ]
 optional-dependencies = { dev = [
     "black==25.1.0",

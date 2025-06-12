@@ -4,7 +4,8 @@ from urllib.parse import urljoin, urlparse
 import re
 import subprocess
 import shutil
-from difflib import get_close_matches, SequenceMatcher
+from difflib import SequenceMatcher
+from rapidfuzz import process
 
 from archlog.web_scraper import WebScraper
 from archlog.apis.gitlab_api import GitLabAPI
@@ -250,7 +251,7 @@ class PackageHandler:
             return None
 
         package_upstream_url = arch_package_overview_information[0]
-        package_base = arch_package_overview_information[1] # For example bluez-libs is based on bluez
+        package_base = arch_package_overview_information[1]  # For example bluez-libs is based on bluez
 
         package_source_files_url = self.archlinux_api.get_gitlab_package_url(
             package.package_name if not package_base else package_base
@@ -740,7 +741,7 @@ class PackageHandler:
         returns `None`.
 
         04.06.2025:
-        This function is currently not in use. It is still here as a backup if the current simple implementation 
+        This function is currently not in use. It is still here as a backup if the current simple implementation
         which replaced this function is not enough
 
         :param url: The URL of the webpage to retrieve and parse.
@@ -946,6 +947,22 @@ class PackageHandler:
 
         return package_changelog if package_changelog else None
 
+    def get_closest_package_tag(self, current_tag: str, tags: List[str], threshold: int = 70) -> Optional[str]:
+        """
+        Finds the closest matching version string based on fuzzy string similarity using RapidFuzz.
+
+        :param current_tag: The current package tag string to compare.
+        :type current_tag: str
+        :param tags: A list of package tags strings.
+        :type tags: List[str]
+        :param threshold: Minimum similarity score (0–100) to consider a match.
+        :type threshold: int
+        :return: The most similar package tag string or None if no match is good enough.
+        :rtype: Optional[str]
+        """
+        result = process.extractOne(current_tag, tags, score_cutoff=threshold)
+        return result[0] if result else None
+
     def get_changelog_compare_package_tags(
         self,
         source: str,
@@ -992,11 +1009,11 @@ class PackageHandler:
                 tag_versions = [tag[0] for tag in upstream_package_tags]
 
                 if current_tag not in upstream_package_tags:
-                    closest_match_current_tag = get_close_matches(current_tag, tag_versions, n=1, cutoff=0.5)
+                    closest_match_current_tag = self.get_closest_package_tag(current_tag, tag_versions)
 
                     if closest_match_current_tag:
                         self.logger.debug(
-                            f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag[0]}"
+                            f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag}"
                         )
                     else:
                         self.logger.debug(
@@ -1005,11 +1022,11 @@ class PackageHandler:
 
                 if new_tag or override_shown_tag not in upstream_package_tags:
                     new_tag_to_check = override_shown_tag or new_tag
-                    closest_match_new_tag = get_close_matches(new_tag_to_check, tag_versions, n=1, cutoff=0.5)
+                    closest_match_new_tag = self.get_closest_package_tag(new_tag_to_check, tag_versions)
 
                     if closest_match_new_tag:
                         self.logger.debug(
-                            f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag[0]}"
+                            f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag}"
                         )
                     else:
                         self.logger.debug(

@@ -14,6 +14,7 @@
 - **GitLab API** Add more logging output, get_commits_between_tags also send back the commit URL now and make the get function private
 - **Package Handler** Replace current GitLab logic in get_package_tags() with the new GitLab API logic
 - **README** Updated README
+- **Package Handler** Replace difflib get_close_matches for tag comparison with rapidfuzz process for better results
 
 ### Bug fixes
 
