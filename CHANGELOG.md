@@ -1,4 +1,4 @@
-# 1.0.8 ()
+# 1.0.8 (2025-06-15)
 
 ### Features and enhancements
 
@@ -17,6 +17,7 @@
 - **Package Handler** Replace difflib get_close_matches for tag comparison with rapidfuzz process for better results
 - **General** Refactoring, improve GitLab API usage
 - **GitLab API** Refactoring, implement retry mechanic, add a function that extracts certain information from the upstream url
+- **Package Handler** Debug: Log the upstream package tags and improve some logging regarding the upstream package tags
 
 ### Bug fixes
 

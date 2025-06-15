@@ -1089,6 +1089,10 @@ class PackageHandler:
                 upstream_package_tags = self.get_package_tags(source.rstrip("/") + "/-/tags")
 
             if upstream_package_tags:
+                # Log upstream package tags for debug reasons
+                for tag, creation_date in upstream_package_tags:
+                    self.logger.debug(f"[Debug]: Upstream package tag: {tag} Creation date: {creation_date}")
+
                 # Check if the current_tag and the new_tag/override_shown_new_tag are not in the upstream package tags
                 # If not, find the closest one to use
                 tag_versions = [tag[0] for tag in upstream_package_tags]
@@ -1098,7 +1102,7 @@ class PackageHandler:
 
                     if closest_match_current_tag:
                         self.logger.debug(
-                            f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag[0]}"
+                            f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag}"
                         )
                     else:
                         self.logger.debug(
@@ -1111,7 +1115,7 @@ class PackageHandler:
 
                     if closest_match_new_tag:
                         self.logger.debug(
-                            f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag[0]}"
+                            f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag}"
                         )
                     else:
                         self.logger.debug(
