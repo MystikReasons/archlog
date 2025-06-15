@@ -199,7 +199,7 @@ class ConfigHandler:
                             versions_dict[package_tag]["changelog"]["changelog origin package"].append(
                                 "- ERROR: Couldn't find origin changelog. Check the logs for further information -"
                             )
-                if arch_package_name == package.package_name and release_type != "major":
+                if release_type != "major":
                     versions_dict[package_tag]["changelog"]["changelog Arch package"].append(
                         {"commit message": changelog_message, "commit URL": package_url}
                     )

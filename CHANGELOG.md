@@ -15,6 +15,7 @@
 - **Package Handler** Replace current GitLab logic in get_package_tags() with the new GitLab API logic
 - **README** Updated README
 - **Package Handler** Replace difflib get_close_matches for tag comparison with rapidfuzz process for better results
+- **General** Refactoring, improve GitLab API usage
 
 ### Bug fixes
 

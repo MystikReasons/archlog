@@ -252,10 +252,9 @@ class PackageHandler:
 
         package_upstream_url = arch_package_overview_information[0]
         package_base = arch_package_overview_information[1]  # For example bluez-libs is based on bluez
+        package_name_search = package.package_name if not package_base else package_base
 
-        package_source_files_url = self.archlinux_api.get_gitlab_package_url(
-            package.package_name if not package_base else package_base
-        )
+        package_source_files_url = self.archlinux_api.get_gitlab_package_url(package_name_search)
 
         self.logger.info(f"[Info]: Arch 'Source Files' URL: {package_source_files_url}")
 
@@ -265,7 +264,9 @@ class PackageHandler:
         # 1st iteration: current version -> 1st intermediate version (minor)
         # 2nd iteration: 1st intermediate version (minor) -> 2nd intermediate version (major)
         arch_package_tags = self.get_package_tags(
-            package_source_files_url + "/-/tags", package.package_name if not package_base else package_base
+            package_source_files_url + "/-/tags",
+            self.gitlab_api.base_urls["Arch"],
+            "archlinux/packaging/packages/" + package_name_search,
         )
 
         if not arch_package_tags:
@@ -278,6 +279,7 @@ class PackageHandler:
             package_changelog_temp = self.handle_intermediate_tags(
                 intermediate_tags,
                 package,
+                package_name_search,
                 package_source_files_url,
                 package_upstream_url,
             )
@@ -302,7 +304,7 @@ class PackageHandler:
                 package_source_files_url,
                 package.current_version_altered,
                 package.new_version_altered,
-                package.package_name,
+                package_name_search,
                 "arch",
             )
 
@@ -315,7 +317,7 @@ class PackageHandler:
                 package,
                 package.current_version_altered,
                 package.new_version_altered,
-                package.package_name,
+                package_name_search,
                 package.new_version_altered,
             )
 
@@ -338,7 +340,7 @@ class PackageHandler:
                 package_source_files_url,
                 package.current_version_altered,
                 package.new_version_altered,
-                package.package_name,
+                package_name_search,
                 "minor",
             )
 
@@ -352,11 +354,36 @@ class PackageHandler:
 
     def handle_intermediate_tags(
         self,
-        intermediate_tags,
+        intermediate_tags: List[Tuple[str, str]],
         package: List[namedtuple],
-        package_source_files_url,
-        package_upstream_url,
-    ):
+        package_name: str,
+        package_source_files_url: str,
+        package_upstream_url: str,
+    ) -> Optional[List[Tuple[str, str, str, str, str]]]:
+        """
+        Process intermediate package tags and determine changelog entries between versions.
+
+        This method compares each intermediate tag with its predecessor to identify
+        whether it represents a minor or major release, then gathers changelog data
+        accordingly. It uses Arch package and upstream sources to build a combined changelog.
+
+        It also compares the final tag in the sequence against the current package version
+        to ensure the last changelog diff is included.
+
+        :param intermediate_tags: List of tuples containing intermediate version tags and their dates.
+        :type intermediate_tags: List[Tuple[str, str]]
+        :param package: A namedtuple-like structure containing version info about the package.
+        :type package: List[namedtuple]
+        :param package_name: The currently checked package name.
+        :type package_name: str
+        :param package_source_files_url: URL pointing to the Arch Linux package source files.
+        :type package_source_files_url: str
+        :param package_upstream_url: URL of the upstream source repository (e.g., GitHub, GitLab).
+        :type package_upstream_url: str
+
+        :return: A list of changelog entries found between intermediate tags, or None if none found.
+        :rtype: Optional[List[Tuple[str, str, str, str, str]]]
+        """
         package_changelog = []
 
         for index, (release, date) in enumerate(intermediate_tags):
@@ -389,7 +416,7 @@ class PackageHandler:
                     package_source_files_url,
                     first_compare_version,
                     release,
-                    package.package_name,
+                    package_name,
                     "minor",
                     release,
                 )
@@ -407,7 +434,7 @@ class PackageHandler:
                     package_source_files_url,
                     first_compare_version,
                     release,
-                    package.package_name,
+                    package_name,
                     "arch",
                 )
 
@@ -420,7 +447,7 @@ class PackageHandler:
                     package,
                     first_compare_version,
                     release,
-                    package.package_name,
+                    package_name,
                     release,
                 )
 
@@ -437,7 +464,7 @@ class PackageHandler:
                 package_source_files_url,
                 release,
                 package.new_version,
-                package.package_name,
+                package_name,
                 "minor",
             )
 
@@ -453,7 +480,7 @@ class PackageHandler:
                 package_source_files_url,
                 release,
                 package.new_version,
-                package.package_name,
+                package_name,
                 "arch",
                 package.new_version_altered,
             )
@@ -467,7 +494,7 @@ class PackageHandler:
                 package,
                 release,
                 package.new_version,
-                package.package_name,
+                package_name,
                 package.new_version_altered,
             )
 
@@ -715,9 +742,7 @@ class PackageHandler:
         """
         reachable_repository = []
         for repository in enabled_repositories:
-            possible_url = (
-                "https://archlinux.org/packages/" + repository + "/" + package_architecture + "/" + package_name
-            )
+            possible_url = f"https://archlinux.org/packages/{repository}/{package_architecture}/{package_name}/"
 
             if self.web_scraper.check_website_availabilty(possible_url):
                 reachable_repository.append(repository)
@@ -768,7 +793,9 @@ class PackageHandler:
             self.logger.error(f"[Error]: An unexpected error occurred while parsing the HTML: {ex}")
             return None
 
-    def get_package_tags(self, url: str, package_name: str) -> List[Tuple[str, str]]:
+    def get_package_tags(
+        self, url: str, base_url: Optional[str] = None, project_path: Optional[str] = None
+    ) -> Optional[List[Tuple[str, str]]]:
         """Retrieves release tags and their associated timestamps from a source code hosting website.
         This function sends an HTTP GET request to the specified URL, parses the HTML content to find
         SVG elements representing tags and their corresponding timestamps. It then returns a list of tuples
@@ -777,29 +804,34 @@ class PackageHandler:
 
         :param url: The URL of the webpage to retrieve and parse.
         :type url: str
-        :param package_name: Name of the Arch package
-        :type package_name: str
+        :param base_url: API endpoint, e.g. use GitLabAPI.base_urls for common types, e.g. https://gitlab.archlinux.org/api/v4
+        :type base_url: str
+        :param project_path: path to the package for the API, e.g. 'archlinux/packaging/packages/linux'
+        :type project_path: str
         :return: A list of tuples where each tuple contains a release tag and its associated timestamp.
                  The timestamp has the format: 2024-12-30T19:45:26.000Z
                  If an error occurs during the request or parsing, or if no relevant data is found, None is returned.
-        :rtype: List[Tuple[str, str]]
+        :rtype: Optional[List[Tuple[str, str]]]
         """
         try:
-            response = self.web_scraper.fetch_page_content(url)
-            if not response:
-                self.logger.debug(f"[Debug]: No response received from {url}")
-                return None
-
             if "gitlab" in url:
-                combined_info = self.gitlab_api.get_package_tags(
-                    self.gitlab_api.base_urls["Arch"], "archlinux/packaging/packages/" + package_name
-                )
+                if base_url and project_path:
+                    combined_info = self.gitlab_api.get_package_tags(base_url, project_path)
+                else:
+                    self.logger.debug(
+                        f"[Debug]: base_url or project_path is missing for {url} to fetch the release tags"
+                    )
+                    return None
 
                 if not combined_info:
                     self.logger.debug(f"[Debug]: No release tags found in {url}")
                     return None
-
             elif "github" in url:
+                response = self.web_scraper.fetch_page_content(url)
+                if not response:
+                    self.logger.debug(f"[Debug]: No response received from {url}")
+                    return None
+
                 # TODO: Currently it does not search for further tags if the Github page has a "Next" button.
                 release_tags_raw = self.web_scraper.find_all_elements(response, "a", class_="Link--primary")
 
@@ -811,7 +843,11 @@ class PackageHandler:
 
                 if not time_tags_raw:
                     return None
-            else:
+            else:  # TODO: Check if this is needed outside of the old GitLab implementation
+                response = self.web_scraper.fetch_page_content(url)
+                if not response:
+                    self.logger.debug(f"[Debug]: No response received from {url}")
+
                 release_tags_raw = self.web_scraper.find_all_elements(
                     response, "svg", attrs={"data-testid": "tag-icon"}
                 )
@@ -885,7 +921,32 @@ class PackageHandler:
         """
         package_changelog = []
         match package_upstream_url:
-            case url if "github.com" in url or "gitlab.com" in url:
+            case url if "gitlab" in url:
+                package_upstream_url_information = self.gitlab_api.extract_upstream_url_information(
+                    package_upstream_url
+                )
+
+                if package_upstream_url_information:
+                    package_changelog_temp = self.get_changelog_compare_package_tags(
+                        url,
+                        current_tag,
+                        new_tag,
+                        package_name,
+                        "major",
+                        override_shown_tag,
+                        package_upstream_url_information[0],
+                        package_upstream_url_information[1],
+                    )
+                else:
+                    self.logger.error(
+                        f"[Error]: GitLab API: No package upstream information found for {package_upstream_url}"
+                    )
+                    return None
+
+                if package_changelog_temp:
+                    package_changelog += package_changelog_temp
+
+            case url if "github.com" in url:
                 package_changelog_temp = self.get_changelog_compare_package_tags(
                     url,
                     current_tag,
@@ -970,8 +1031,10 @@ class PackageHandler:
         new_tag: str,
         package_name: str,
         release_type: str,
-        override_shown_tag: Optional[str] = None,
-    ) -> List[Tuple[str, str, str, str, str]]:
+        override_shown_new_tag: Optional[str] = None,
+        project_repository: Optional[str] = None,
+        project_path: Optional[str] = None,
+    ) -> Optional[List[Tuple[str, str, str, str, str]]]:
         """Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
         This function constructs a URL to compare the two specified tags in a Git repository, retrieves
         the comparison page, and parses it to extract commit messages and their corresponding URLs.
@@ -987,24 +1050,46 @@ class PackageHandler:
         :type package_name: str
         :param release_type: minor, major or arch.
         :type release_type: str
-        :param override_shown_tag: This is only for major releases since the Arch package tag
+        :param override_shown_new_tag: This is only for major releases since the Arch package tag
                and the origin package tag can differentiate (optional, defaults to None). It is also needed
                for intermediate releases when checking the Arch package.
-        :type override_shown_tag: Optional[str]
+        :type override_shown_new_tag: Optional[str]
+        :param project_repository: The top-level namespace or organization of the project, typically found
+                                directly before the domain's TLD. For example:
+                                - "gnome" in "https://gitlab.gnome.org/GNOME/adwaita-icon-theme"
+                                - "archlinux" in "https://gitlab.archlinux.org/archlinux/packaging/packages/mesa"
+        :type project_repository: str
+        :param project_path: The relative path to the repository within the platform, typically including
+                     groups, subgroups, but without the repository name. For example:
+                     - "GNOME"
+                     - "archlinux/packaging/packages"
+        :type project_path: str
         :return: A list of tuples where each tuple contains a commit message, its full URL and the version tag.
-        :rtype: List[Tuple[str, str, str, str, str]]
+        :rtype: Optional[List[Tuple[str, str, str, str, str]]]
         """
+        # This is not needed for git hosting sites that do have an public API endpoint.
+        # But it is always needed for the final changelog entry to which the user can access
+        # the compare tags website frontend instead of the API JSON output.
         compare_tags_url = None
+        closest_match_current_tag = None
+        closest_match_new_tag = None
 
         if "major" in release_type:
-            upstream_package_tags = (
-                self.get_package_tags(source.rstrip("/") + "/tags", package_name)
-                if "github" in source
-                else self.get_package_tags(source.rstrip("/") + "/-/tags", package_name)
-            )
+            if "github" in source:
+                upstream_package_tags = self.get_package_tags(source.rstrip("/") + "/tags")
+            elif "gitlab" in source:
+                if project_repository and project_path:
+                    upstream_package_tags = self.gitlab_api.get_package_tags(
+                        "https://gitlab." + project_repository + ".org/api/v4/projects",
+                        project_path + "/" + package_name,
+                    )
+                else:
+                    upstream_package_tags = None
+            else:
+                upstream_package_tags = self.get_package_tags(source.rstrip("/") + "/-/tags")
 
             if upstream_package_tags:
-                # Check if the current_tag and the new_tag/override_shown_tag are not in the upstream package tags
+                # Check if the current_tag and the new_tag/override_shown_new_tag are not in the upstream package tags
                 # If not, find the closest one to use
                 tag_versions = [tag[0] for tag in upstream_package_tags]
 
@@ -1013,36 +1098,35 @@ class PackageHandler:
 
                     if closest_match_current_tag:
                         self.logger.debug(
-                            f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag}"
+                            f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag[0]}"
                         )
                     else:
                         self.logger.debug(
                             f"[Debug]: No similar tag for {current_tag} found in the upstream package repository"
                         )
 
-                if new_tag or override_shown_tag not in upstream_package_tags:
-                    new_tag_to_check = override_shown_tag or new_tag
+                if new_tag or override_shown_new_tag not in upstream_package_tags:
+                    new_tag_to_check = override_shown_new_tag or new_tag
                     closest_match_new_tag = self.get_closest_package_tag(new_tag_to_check, tag_versions)
 
                     if closest_match_new_tag:
                         self.logger.debug(
-                            f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag}"
+                            f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag[0]}"
                         )
                     else:
                         self.logger.debug(
                             f"[Debug]: No similar tag for {new_tag_to_check} found in the upstream package repository"
                         )
 
-                # GitHub compare tags url: https://github.com/user/repo/compare/v1.0.0...v2.0.0
-                # GitLab compare tags url: https://github.com/user/repo/-/compare/v1.0.0...v2.0.0
+                # GitHub compare tags URL: https://github.com/user/repo/compare/v1.0.0...v2.0.0
                 compare_tags_url = (
                     f"{source.rstrip('/')}/compare/"
                     f"{(closest_match_current_tag or [current_tag])[0]}..."
                     f"{(closest_match_new_tag or [new_tag])[0]}"
                     if "github" in source
                     else f"{source.rstrip('/')}/-/compare/"
-                    f"{(closest_match_current_tag or [current_tag])[0]}..."
-                    f"{(closest_match_new_tag or [new_tag])[0]}"
+                    f"{closest_match_current_tag or current_tag}..."
+                    f"{closest_match_new_tag or new_tag}"
                 )
             else:
                 self.logger.debug(f"[Debug]: No upstream package tags found for {source}")
@@ -1059,18 +1143,14 @@ class PackageHandler:
 
         self.logger.debug(f"[Debug]: Compare tags URL: {compare_tags_url}")
 
-        response = self.web_scraper.fetch_page_content(compare_tags_url)
-        if response is None:
-            self.logger.debug(f"[Debug]: No response received from {compare_tags_url}")
-            return None
+        if "gitlab" not in source:
+            response = self.web_scraper.fetch_page_content(compare_tags_url)
+            if response is None:
+                self.logger.debug(f"[Debug]: No response received from {compare_tags_url}")
+                return None
 
         # TODO: If the source hosting site is Github which can display commits only on multiple pages, how
         #       should we handle that?
-        # TODO: GitLab hides commits in cases where there are more than 100 due to perfomance reasons but there is no button visible
-        #       Example: https://gitlab.com/kernel-firmware/linux-firmware/-/compare/20250109...20250211?from_project_id=48890189
-        #       This is a known issue with Gitlab and a fix is hopefully "soon" here:
-        #       https://gitlab.com/gitlab-org/gitlab/-/issues/16800
-        #       https://gitlab.com/gitlab-org/gitlab/-/issues/16746
         if "github" in source:
             kwargs = "mb-1"
             tag = "p"
@@ -1078,8 +1158,25 @@ class PackageHandler:
             kwargs = "commit-row-message"
             tag = "a"
 
+        commits = None
         if "git.kernel.org" in source:
             commits = self.web_scraper.find_elements_between_two_elements(response, "tr", new_tag, current_tag)
+        elif "gitlab" in source:
+            if release_type == "arch" or release_type == "minor":
+                commits = self.gitlab_api.get_commits_between_tags(
+                    self.gitlab_api.base_urls["Arch"],
+                    "archlinux/packaging/packages/" + package_name,
+                    current_tag,
+                    override_shown_new_tag if override_shown_new_tag else new_tag,
+                )
+            else:
+                if project_repository and project_path:
+                    commits = self.gitlab_api.get_commits_between_tags(
+                        "https://gitlab." + project_repository + ".org/api/v4/projects",
+                        project_path + "/" + package_name,
+                        closest_match_current_tag if closest_match_current_tag else current_tag,
+                        closest_match_new_tag if closest_match_new_tag else new_tag,
+                    )
         else:
             commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
 
@@ -1089,15 +1186,19 @@ class PackageHandler:
 
         if "git.kernel.org" in source:
             commit_messages = [commit.find("a").get_text(strip=True) for commit in commits]
+        elif "gitlab" in source:
+            commit_messages = [commit[0] for commit in commits]
         else:
             commit_messages = [commit.get_text(strip=True) for commit in commits]
 
         if "github" in source or "git.kernel.org" in source:
             commit_urls = [urljoin(source, commit.find("a")["href"]) for commit in commits]
+        elif "gitlab" in source:
+            commit_urls = [commit[2] for commit in commits]
         else:
             commit_urls = [urljoin(source, commit.get("href")) for commit in commits]
 
-        version_tags = [override_shown_tag if override_shown_tag else new_tag] * len(commit_messages)
+        version_tags = [override_shown_new_tag if override_shown_new_tag else new_tag] * len(commit_messages)
         package_names = [package_name] * len(commit_messages)
         release_types = [release_type] * len(commit_messages)
         compare_tags_urls = [compare_tags_url] * len(commit_messages)
@@ -1117,6 +1218,22 @@ class PackageHandler:
             return combined_info
         else:
             return None
+
+    def get_closest_package_tag(self, current: str, candidates: List[str], threshold: int = 70) -> Optional[str]:
+        """
+        Finds the closest matching version string based on fuzzy string similarity using RapidFuzz.
+
+        :param current: The current version string to compare.
+        :type current: str
+        :param candidates: A list of candidate version strings.
+        :type candidates: List[str]
+        :param threshold: Minimum similarity score (0–100) to consider a match.
+        :type threshold: int
+        :return: The most similar version string or None if no match is good enough.
+        :rtype: Optional[str]
+        """
+        result = process.extractOne(current, candidates, score_cutoff=threshold)
+        return result[0] if result else None
 
     def get_changelog_kde_package(
         self,
