@@ -6,6 +6,7 @@ import subprocess
 import shutil
 from difflib import SequenceMatcher
 from rapidfuzz import process
+import tomllib
 
 from archlog.web_scraper import WebScraper
 from archlog.apis.gitlab_api import GitLabAPI
@@ -250,7 +251,7 @@ class PackageHandler:
             self.logger.error(f"[Error]: Couldn't extract all required information from {arch_package_url}.")
             return None
 
-        package_upstream_url = arch_package_overview_information[0]
+        package_upstream_url_overview = arch_package_overview_information[0]
         package_base = arch_package_overview_information[1]  # For example bluez-libs is based on bluez
         package_name_search = package.package_name if not package_base else package_base
 
@@ -273,6 +274,33 @@ class PackageHandler:
             self.logger.error(f"[Error]: {package.package_name}: Couldn't find any arch package tags")
             return None
 
+        # Try to get the content of the .nvchecker.toml file, if existing
+        # This will be used instead of the package_upstream_url_overview since this mostly does not contain the
+        # correct URL regarding the git package hosting website.
+        # Example for xorg-server:
+        # package_upstream_url_overview: https://xorg.freedesktop.org
+        # .nvchecker.toml url: https://gitlab.freedesktop.org/xorg/xserver/-/tags
+        # https://gitlab.archlinux.org/archlinux/packaging/packages/xorg-server/-/blob/main/.nvchecker.toml?ref_type=heads
+        nvchecker_content = self.gitlab_api.get_file_content(
+            self.gitlab_api.base_urls["Arch"], "archlinux/packaging/packages/" + package_name_search, ".nvchecker.toml"
+        )
+
+        package_upstream_url_nvchecker = None
+        if nvchecker_content:
+            parsed_content = tomllib.loads(nvchecker_content)
+            if parsed_content[package_name_search].get("url"):
+                package_upstream_url_nvchecker = parsed_content[package_name_search]["url"]
+            elif parsed_content[package_name_search].get("git"):
+                package_upstream_url_nvchecker = parsed_content[package_name_search]["git"]
+            else:
+                self.logger.debug(
+                    f"[Debug]: {package.package_name}: Found no URL in .nvchecker.toml in {package_source_files_url}."
+                )
+        else:
+            self.logger.debug(
+                f"[Debug]: {package.package_name}: Found no .nvchecker.toml file in {package_source_files_url}."
+            )
+
         intermediate_tags = self.find_intermediate_tags(arch_package_tags, package.current_version, package.new_version)
         if intermediate_tags:
             self.logger.info(f"[Info]: Intermediate tags: {intermediate_tags}")
@@ -281,7 +309,7 @@ class PackageHandler:
                 package,
                 package_name_search,
                 package_source_files_url,
-                package_upstream_url,
+                package_upstream_url_nvchecker if package_upstream_url_nvchecker else package_upstream_url_overview,
             )
 
             if package_changelog_temp:
@@ -312,7 +340,7 @@ class PackageHandler:
                 package_changelog += package_changelog_temp
 
             package_changelog_temp = self.get_package_changelog_upstream_source(
-                package_upstream_url,
+                package_upstream_url_nvchecker if package_upstream_url_nvchecker else package_upstream_url_overview,
                 package_source_files_url,
                 package,
                 package.current_version_altered,
@@ -922,16 +950,25 @@ class PackageHandler:
         package_changelog = []
         match package_upstream_url:
             case url if "gitlab" in url:
-                package_upstream_url_information = self.gitlab_api.extract_upstream_url_information(
-                    package_upstream_url
-                )
+                # Some package upstream URL's could look like this from the .nvchecker.toml file:
+                # https://gitlab.archlinux.org/archlinux/packaging/packages/xorg-server/-/tags
+                # We only need:
+                # https://gitlab.archlinux.org/archlinux/packaging/packages/xorg-server
+                # otherwise when setting together the compare url tags link for the changelog file
+                # it can cause invalid URL's for the user.
+                parsed_upstream_url = urlparse(url)
+                parts = parsed_upstream_url.path.strip("/").split("/")
+                base_parts = parts[: parts.index("-")] if "-" in parts else parts
+                url = f"{parsed_upstream_url.scheme}://{parsed_upstream_url.netloc}/{'/'.join(base_parts)}"
+
+                package_upstream_url_information = self.gitlab_api.extract_upstream_url_information(url)
 
                 if package_upstream_url_information:
                     package_changelog_temp = self.get_changelog_compare_package_tags(
                         url,
                         current_tag,
                         new_tag,
-                        package_name,
+                        package_upstream_url_information[2] if package_upstream_url_information[2] else package_name,
                         "major",
                         override_shown_tag,
                         package_upstream_url_information[0],

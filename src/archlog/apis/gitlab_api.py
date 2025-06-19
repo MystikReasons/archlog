@@ -2,6 +2,7 @@ import httpx
 import urllib.parse
 import re
 import time
+import base64
 from typing import Optional, List, Dict, Tuple
 
 
@@ -154,24 +155,53 @@ class GitLabAPI:
         else:
             return None
 
-    def extract_upstream_url_information(self, upstream_url: str) -> Optional[Tuple[str, str]]:
+    def extract_upstream_url_information(self, upstream_url: str) -> Optional[Tuple[str, str, str]]:
         """
         Extracts the package repository and the project path of a given GitLab project URL and returns them.
 
         Example URL: https://gitlab.gnome.org/GNOME/adwaita-icon-theme
         package repository: gnome
         project path: GNOME
+        package name: adwaita-icon-theme
+
+        Example URL: https://gitlab.freedesktop.org/xorg/xserver/-/tags
+        package repository: freedesktop
+        project path: xorg
+        package name: xserver
 
         :param upstream_url: The URL of the upstream GitLab repository
         :type upstream_url: str
-        :return: A tuple containing the package repository (domain subpart) and the project path (first path segment),
-                or None if the URL doesn't match the expected format.
-        :rtype: Optional[Tuple[str, str]]
+        :return: A tuple containing the package repository (domain subpart), the project path (first path segment)
+                and the project name, or None if the URL doesn't match the expected format.
+        :rtype: Optional[Tuple[str, str, str]]
         """
-        match = re.search(r"https://gitlab\.([^.]+)\.org/([^/]+)/", upstream_url)
+        match = re.search(r"https://gitlab\.([^.]+)\.org/([^/]+)/([^/]+)", upstream_url)
         if match:
             package_repository = match.group(1)
             project_path = match.group(2)
+            package_name = match.group(3)
 
-            return package_repository, project_path
+            return package_repository, project_path, package_name
         return None
+
+    def get_file_content(self, base_url: str, project_path: str, filename: str) -> Optional[str]:
+        """
+        Returns the "content" of a specific file decoded.
+        Example URL:
+        - https://gitlab.archlinux.org/api/v4/projects/archlinux%2Fpackaging%2Fpackages%2Fxorg-server/repository/files/.nvchecker.toml?ref=main
+
+        :param base_url: use GitLabAPI.base_urls for common types, e.g. https://gitlab.archlinux.org/api/v4
+        :type base_url: str
+        :param project_path: Project path, e.g. 'archlinux/packaging/packages/linux'
+        :type project_path: str
+        :return: Content of page as str with utf-8 encoding, or None on failure
+        :rtype: Optional[str]
+        """
+        encoded_path = urllib.parse.quote_plus(project_path)
+        endpoint = f"{encoded_path}/repository/files/{filename}?ref=main"
+
+        response = self.__get(base_url, endpoint)
+        if response:
+            return base64.b64decode(response.get("content")).decode("utf-8")
+        else:
+            return None

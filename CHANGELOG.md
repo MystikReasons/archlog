@@ -1,3 +1,12 @@
+# 1.0.9 ()
+
+### Features and enhancements
+
+- **Web Scraper** Add extraction of repository hosting URL in .nvchecker.toml as an prioritized alternative to the upstream URL
+- **GitLab API** Add method to fetch and decode file content from GitLab API
+
+### Bug fixes
+
 # 1.0.8 (2025-06-15)
 
 ### Features and enhancements
