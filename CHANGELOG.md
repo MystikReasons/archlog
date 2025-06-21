@@ -4,6 +4,7 @@
 
 - **Web Scraper** Add extraction of repository hosting URL in .nvchecker.toml as an prioritized alternative to the upstream URL
 - **GitLab API** Add method to fetch and decode file content from GitLab API
+- **GitLab API** Refactor error handling
 
 ### Bug fixes
 

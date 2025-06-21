@@ -72,29 +72,38 @@ class GitLabAPI:
         url = f"{base_url}/{endpoint.lstrip('/')}"
         self.logger.debug(f"GitLab API URL: {url}")
 
-        for attempt in range(0, max_attempts):
+        for attempt in range(max_attempts):
             try:
                 response = self.client.get(url, params=params)
+                response.raise_for_status()
+                return response.json()
 
-                if response.status_code in self.retry_status_codes:
+            except httpx.HTTPStatusError as ex:  # handles 4xx/5xx errors after raise_for_status()
+                status_code = ex.response.status_code
+
+                if status_code in self.retry_status_codes and attempt < max_attempts - 1:
                     wait = backoff_factor**attempt
                     self.logger.debug(
-                        f"GitLab API: [Retry {attempt}/{max_attempts}] HTTP {response.status_code} - retrying in {wait}s"
+                        f"GitLab API: [Retry {attempt + 1}/{max_attempts}] HTTP {status_code} - retrying in {wait}s"
                     )
                     time.sleep(wait)
                     continue
-
-                response.raise_for_status()
-                return response.json()
-            except httpx.HTTPError as ex:  # this handles for example 404 or 403
-                self.logger.error(f"[Error]: GitLab API request HTTP error: {ex}")
+                else:
+                    self.logger.error(f"[Error]: GitLab API HTTP error {status_code}: {ex}")
+                    return None
 
             except httpx.RequestError as ex:
                 self.logger.error(f"[Error]: GitLab API request error: {ex}")
 
-                if attempt == max_attempts:
+                if attempt < max_attempts - 1:
+                    wait = backoff_factor**attempt
+                    self.logger.debug(
+                        f"GitLab API: [Retry {attempt + 1}/{max_attempts}] RequestError - retrying in {wait}s"
+                    )
+                    time.sleep(wait)
+                    continue
+                else:
                     return None
-                time.sleep(backoff_factor**attempt)
 
         self.logger.error(f"[Error]: GitLab API: All retries failed.")
         return None
