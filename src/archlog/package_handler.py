@@ -292,6 +292,9 @@ class PackageHandler:
                 package_upstream_url_nvchecker = parsed_content[package_name_search]["url"]
             elif parsed_content[package_name_search].get("git"):
                 package_upstream_url_nvchecker = parsed_content[package_name_search]["git"]
+
+                if ".git" in package_upstream_url_nvchecker:
+                    package_upstream_url_nvchecker = package_upstream_url_nvchecker.removesuffix(".git")
             else:
                 self.logger.debug(
                     f"[Debug]: {package.package_name}: Found no URL in .nvchecker.toml in {package_source_files_url}."
@@ -961,6 +964,8 @@ class PackageHandler:
                 base_parts = parts[: parts.index("-")] if "-" in parts else parts
                 url = f"{parsed_upstream_url.scheme}://{parsed_upstream_url.netloc}/{'/'.join(base_parts)}"
 
+                self.logger.debug(f"[Debug]: GitLab API: Upstream URL {url}")
+
                 package_upstream_url_information = self.gitlab_api.extract_upstream_url_information(url)
 
                 if package_upstream_url_information:
@@ -968,11 +973,12 @@ class PackageHandler:
                         url,
                         current_tag,
                         new_tag,
-                        package_upstream_url_information[2] if package_upstream_url_information[2] else package_name,
+                        package_upstream_url_information[3] if package_upstream_url_information[3] else package_name,
                         "major",
                         override_shown_tag,
                         package_upstream_url_information[0],
                         package_upstream_url_information[1],
+                        package_upstream_url_information[2],
                     )
                 else:
                     self.logger.error(
@@ -1059,7 +1065,7 @@ class PackageHandler:
         :rtype: Optional[str]
         """
         # Preprocess current_tag: remove leading digits + dash (e.g., "1-") and trailing "-1"
-        cleaned_tag = re.sub(r'^(\d+-)|(-\d+$)', '', current_tag)
+        cleaned_tag = re.sub(r"^(\d+-)|(-\d+$)", "", current_tag)
 
         matches = process.extract(cleaned_tag, tags, score_cutoff=threshold)
 
@@ -1076,7 +1082,8 @@ class PackageHandler:
         package_name: str,
         release_type: str,
         override_shown_new_tag: Optional[str] = None,
-        project_repository: Optional[str] = None,
+        package_repository: Optional[str] = None,
+        tld: Optional[str] = None,
         project_path: Optional[str] = None,
     ) -> Optional[List[Tuple[str, str, str, str, str]]]:
         """Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
@@ -1098,11 +1105,13 @@ class PackageHandler:
                and the origin package tag can differentiate (optional, defaults to None). It is also needed
                for intermediate releases when checking the Arch package.
         :type override_shown_new_tag: Optional[str]
-        :param project_repository: The top-level namespace or organization of the project, typically found
+        :param package_repository: The top-level namespace or organization of the project, typically found
                                 directly before the domain's TLD. For example:
                                 - "gnome" in "https://gitlab.gnome.org/GNOME/adwaita-icon-theme"
                                 - "archlinux" in "https://gitlab.archlinux.org/archlinux/packaging/packages/mesa"
-        :type project_repository: str
+        :type package_repository: str
+        :param tld: The domain's TLD. For example: org, com etc.
+        :type tld: str
         :param project_path: The relative path to the repository within the platform, typically including
                      groups, subgroups, but without the repository name. For example:
                      - "GNOME"
@@ -1122,9 +1131,9 @@ class PackageHandler:
             if "github" in source:
                 upstream_package_tags = self.get_package_tags(source.rstrip("/") + "/tags")
             elif "gitlab" in source:
-                if project_repository and project_path:
+                if project_path:
                     upstream_package_tags = self.gitlab_api.get_package_tags(
-                        "https://gitlab." + project_repository + ".org/api/v4/projects",
+                        "https://gitlab." + (package_repository + "." or "") + tld + "/api/v4/projects",
                         project_path + "/" + package_name,
                     )
                 else:
@@ -1218,9 +1227,9 @@ class PackageHandler:
                     override_shown_new_tag if override_shown_new_tag else new_tag,
                 )
             else:
-                if project_repository and project_path:
+                if project_path:
                     commits = self.gitlab_api.get_commits_between_tags(
-                        "https://gitlab." + project_repository + ".org/api/v4/projects",
+                        "https://gitlab." + (package_repository + "." or "") + tld + "/api/v4/projects",
                         project_path + "/" + package_name,
                         closest_match_current_tag if closest_match_current_tag else current_tag,
                         closest_match_new_tag if closest_match_new_tag else new_tag,

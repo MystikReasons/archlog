@@ -164,33 +164,44 @@ class GitLabAPI:
         else:
             return None
 
-    def extract_upstream_url_information(self, upstream_url: str) -> Optional[Tuple[str, str, str]]:
+    def extract_upstream_url_information(self, upstream_url: str) -> Optional[Tuple[str, str, str, str]]:
         """
         Extracts the package repository and the project path of a given GitLab project URL and returns them.
 
         Example URL: https://gitlab.gnome.org/GNOME/adwaita-icon-theme
         package repository: gnome
+        tld: org
         project path: GNOME
         package name: adwaita-icon-theme
 
         Example URL: https://gitlab.freedesktop.org/xorg/xserver/-/tags
         package repository: freedesktop
+        tld: org
         project path: xorg
         package name: xserver
 
+        Example URL: https://gitlab.com/kernel-firmware/linux-firmware
+        package repository: None
+        tld: com
+        project path: kernel-firmware
+        package name: linux-firmware
+
         :param upstream_url: The URL of the upstream GitLab repository
         :type upstream_url: str
-        :return: A tuple containing the package repository (domain subpart), the project path (first path segment)
-                and the project name, or None if the URL doesn't match the expected format.
-        :rtype: Optional[Tuple[str, str, str]]
+        :return: A tuple containing the package repository (domain subpart), the top domain level (tld),
+                the project path (first path segment) and the project name,
+                or None if the URL doesn't match the expected format.
+        :rtype: Optional[Tuple[str, str, str, str]]
         """
-        match = re.search(r"https://gitlab\.([^.]+)\.org/([^/]+)/([^/]+)", upstream_url)
+        match = re.search(r"https://gitlab(?:\.([^.]+))?\.(com|org)/([^/]+)/([^/]+)(?:/|$)", upstream_url)
+
         if match:
             package_repository = match.group(1)
-            project_path = match.group(2)
-            package_name = match.group(3)
+            tld = match.group(2)
+            project_path = match.group(3)
+            package_name = match.group(4)
 
-            return package_repository, project_path, package_name
+            return package_repository, tld, project_path, package_name
         return None
 
     def get_file_content(self, base_url: str, project_path: str, filename: str) -> Optional[str]:

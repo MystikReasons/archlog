@@ -6,10 +6,13 @@
 - **GitLab API** Add method to fetch and decode file content from GitLab API
 - **GitLab API** Refactor error handling
 - **Test** Add tests for getting the closest package tag
+- **Test** Add tests for extracting information for GitLab upstream URL's
+- **GitLab API** extract_upstream_url_information now extracts the TLD too
 
 ### Bug fixes
 
 - **Package Handler** Improve method to get the closest package tag. This fixes some KDE packages
+- **Package Handler** Improve package tag and package changelog detection for gitlab.com URL's
 
 # 1.0.8 (2025-06-15)
 

@@ -29,6 +29,7 @@ optional-dependencies = { dev = [
     "black==25.1.0",
     "flake8==7.1.2",
     "setuptools>=78.1.0",
+    "pytest==8.4.0",
 ] }
 
 [project.urls]
