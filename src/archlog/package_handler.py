@@ -1132,10 +1132,11 @@ class PackageHandler:
                 upstream_package_tags = self.get_package_tags(source.rstrip("/") + "/tags")
             elif "gitlab" in source:
                 if project_path:
-                    upstream_package_tags = self.gitlab_api.get_package_tags(
-                        "https://gitlab." + (package_repository + "." or "") + tld + "/api/v4/projects",
-                        project_path + "/" + package_name,
-                    )
+                    subdomain = f"{package_repository}." if package_repository else ""
+                    base_url = f"https://gitlab.{subdomain}{tld}/api/v4/projects"
+                    project_full_path = f"{project_path}/{package_name}"
+
+                    upstream_package_tags = self.gitlab_api.get_package_tags(base_url, project_full_path)
                 else:
                     upstream_package_tags = None
             else:
@@ -1228,9 +1229,13 @@ class PackageHandler:
                 )
             else:
                 if project_path:
+                    subdomain = f"{package_repository}." if package_repository else ""
+                    base_url = f"https://gitlab.{subdomain}{tld}/api/v4/projects"
+                    project_full_path = f"{project_path}/{package_name}"
+
                     commits = self.gitlab_api.get_commits_between_tags(
-                        "https://gitlab." + (package_repository + "." or "") + tld + "/api/v4/projects",
-                        project_path + "/" + package_name,
+                        base_url,
+                        project_full_path,
                         closest_match_current_tag if closest_match_current_tag else current_tag,
                         closest_match_new_tag if closest_match_new_tag else new_tag,
                     )
