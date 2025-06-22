@@ -1058,8 +1058,15 @@ class PackageHandler:
         :return: The most similar package tag string or None if no match is good enough.
         :rtype: Optional[str]
         """
-        result = process.extractOne(current_tag, tags, score_cutoff=threshold)
-        return result[0] if result else None
+        # Preprocess current_tag: remove leading digits + dash (e.g., "1-") and trailing "-1"
+        cleaned_tag = re.sub(r'^(\d+-)|(-\d+$)', '', current_tag)
+
+        matches = process.extract(cleaned_tag, tags, score_cutoff=threshold)
+
+        if not matches:
+            return None
+
+        return matches[0][0]
 
     def get_changelog_compare_package_tags(
         self,
@@ -1259,22 +1266,6 @@ class PackageHandler:
             return combined_info
         else:
             return None
-
-    def get_closest_package_tag(self, current: str, candidates: List[str], threshold: int = 70) -> Optional[str]:
-        """
-        Finds the closest matching version string based on fuzzy string similarity using RapidFuzz.
-
-        :param current: The current version string to compare.
-        :type current: str
-        :param candidates: A list of candidate version strings.
-        :type candidates: List[str]
-        :param threshold: Minimum similarity score (0–100) to consider a match.
-        :type threshold: int
-        :return: The most similar version string or None if no match is good enough.
-        :rtype: Optional[str]
-        """
-        result = process.extractOne(current, candidates, score_cutoff=threshold)
-        return result[0] if result else None
 
     def get_changelog_kde_package(
         self,
