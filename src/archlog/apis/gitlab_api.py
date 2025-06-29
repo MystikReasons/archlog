@@ -234,3 +234,24 @@ class GitLabAPI:
             return base64.b64decode(response.get("content")).decode("utf-8")
         else:
             return None
+
+    def get_package_overview_site_information(self, base_url: str, project_path: str) -> Optional[Tuple[str, str]]:
+        """
+        Returns the URL and the package description from the GitLab package overview page.
+        Example URL: https://invent.kde.org/api/v4/projects/plasma%2Fspectacle
+        Return values: https://invent.kde.org/plasma/spectacle & Screenshot capture utility
+
+        :param base_url: use GitLabAPI.base_urls for common types, e.g. https://gitlab.archlinux.org/api/v4/projects
+        :type base_url: str
+        :param project_path: Project path + package name, e.g. 'archlinux/packaging/packages/linux'
+        :type project_path: str
+        :return: Content of page as str with utf-8 encoding, or None on failure
+        :rtype: Optional[Tuple[str, str]]
+        """
+        encoded_path = urllib.parse.quote_plus(project_path)
+
+        response = self.__get(base_url, encoded_path)
+        if response:
+            return [response.get("web_url", ""), response.get("description")]
+        else:
+            return None

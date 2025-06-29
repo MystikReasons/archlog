@@ -7,9 +7,7 @@ from archlog.apis.gitlab_api import GitLabAPI
 @pytest.fixture
 def handler():
     mock_logger = Mock()
-
-    with patch("archlog.package_handler.GitLabAPI"):
-        return GitLabAPI(mock_logger)
+    return GitLabAPI(mock_logger)
 
 
 def test_freedesktop_url(handler):
@@ -25,3 +23,8 @@ def test_native_url(handler):
 def test_gnome_url(handler):
     url = "https://gitlab.gnome.org/GNOME/adwaita-icon-theme"
     assert handler.extract_upstream_url_information(url) == ("gnome", "org", "GNOME", "adwaita-icon-theme")
+
+
+def test_kde_url(handler):
+    url = "https://invent.kde.org/plasma/spectacle/"
+    assert handler.extract_upstream_url_information(url) == ("kde", "org", "plasma", "spectacle")

@@ -1139,6 +1139,14 @@ class PackageHandler:
                     upstream_package_tags = self.gitlab_api.get_package_tags(base_url, project_full_path)
                 else:
                     upstream_package_tags = None
+            elif "invent.kde" in source:
+                if project_path:
+                    base_url = f"https://invent.kde.org/api/v4/projects"
+                    project_full_path = f"{project_path}/{package_name}"
+
+                    upstream_package_tags = self.gitlab_api.get_package_tags(base_url, project_full_path)
+                else:
+                    upstream_package_tags = None
             else:
                 upstream_package_tags = self.get_package_tags(source.rstrip("/") + "/-/tags")
 
@@ -1177,6 +1185,7 @@ class PackageHandler:
                         )
 
                 # GitHub compare tags URL: https://github.com/user/repo/compare/v1.0.0...v2.0.0
+                # KDE GitLab compare tags URL: https://invent.kde.org/plasma/plasma-firewall/-/compare/v6.3.5...v6.3.90
                 compare_tags_url = (
                     f"{source.rstrip('/')}/compare/"
                     f"{(closest_match_current_tag or [current_tag])[0]}..."
@@ -1201,7 +1210,7 @@ class PackageHandler:
 
         self.logger.debug(f"[Debug]: Compare tags URL: {compare_tags_url}")
 
-        if "gitlab" not in source:
+        if "gitlab" not in source and "invent.kde" not in source:
             response = self.web_scraper.fetch_page_content(compare_tags_url)
             if response is None:
                 self.logger.debug(f"[Debug]: No response received from {compare_tags_url}")
@@ -1239,6 +1248,15 @@ class PackageHandler:
                         closest_match_current_tag if closest_match_current_tag else current_tag,
                         closest_match_new_tag if closest_match_new_tag else new_tag,
                     )
+        elif "invent.kde" in source:
+            if project_path:
+                project_full_path = f"{project_path}/{package_name}"
+                commits = self.gitlab_api.get_commits_between_tags(
+                    "https://invent.kde.org/api/v4/projects",
+                    project_full_path,
+                    closest_match_current_tag if closest_match_current_tag else current_tag,
+                    closest_match_new_tag if closest_match_new_tag else new_tag,
+                )
         else:
             commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
 
@@ -1248,14 +1266,14 @@ class PackageHandler:
 
         if "git.kernel.org" in source:
             commit_messages = [commit.find("a").get_text(strip=True) for commit in commits]
-        elif "gitlab" in source:
+        elif "gitlab" in source or "invent.kde" in source:
             commit_messages = [commit[0] for commit in commits]
         else:
             commit_messages = [commit.get_text(strip=True) for commit in commits]
 
         if "github" in source or "git.kernel.org" in source:
             commit_urls = [urljoin(source, commit.find("a")["href"]) for commit in commits]
-        elif "gitlab" in source:
+        elif "gitlab" in source or "invent.kde" in source:
             commit_urls = [commit[2] for commit in commits]
         else:
             commit_urls = [urljoin(source, commit.get("href")) for commit in commits]
@@ -1313,14 +1331,18 @@ class PackageHandler:
         #
         # 1. Check if the upstream URL already contains the kde category
         #    - Example: https://archlinux.org/packages/extra/x86_64/ark/
-        # 2. Try to open https://apps.kde.org/... and extract the category from there
+        # 2. Use the GitLab REST API to check if the project exists under that category
+        #    - If https://invent.kde.org/api/v4/projects/{category}%2F{package_name} does not return a 404, the category is correct
+        # 3. Try to open https://apps.kde.org/... and extract the category from there
         #    - Example: https://apps.kde.org/ark/
-        # 3. Try to extract the category out of the `url = https://...` in .SRCINFO (To be implemented)
+        # 4. Try to extract the category out of the `url = https://...` in .SRCINFO (To be implemented)
         #    - Example: https://gitlab.archlinux.org/archlinux/packaging/packages/ark/-/blob/main/.SRCINFO
-        # 4. Brute force method, go through each KDE category and try if URL is reachable (To be implemented)
+        # 5. Brute force method, go through each KDE category and try if URL is reachable (To be implemented)
         #    - Example 1: https://invent.kde.org/frameworks/baloo-widgets
         #    - Example 2: https://invent.kde.org/libraries/baloo-widgets
         kde_category_found = False
+        kde_category = None
+        kde_gitlab_url = None
         for tries in range(3):
             match tries:
                 case 0:
@@ -1334,13 +1356,31 @@ class PackageHandler:
                         self.logger.debug(f"[Debug]: KDE category: {kde_category}")
                         break
                 case 1:
-                    kde_category_url = "https://apps.kde.org/" + package_name
+                    for category in kde_package_categories:
+                        kde_gitlab_url = f"https://invent.kde.org/{category}/{package_name}/"
+
+                        # We are using a hacky-way to check if the URL is reachable by the GitLab REST API
+                        # If it is, we know that the category is correct, otherwise we would get a 404
+                        if self.gitlab_api.get_package_overview_site_information(
+                            "https://invent.kde.org/api/v4/projects", f"{category}/{package_name}"
+                        ):
+                            kde_category = category
+                            kde_category_found = True
+                            self.logger.debug(f"[Debug]: KDE GitLab package URL: {kde_gitlab_url}")
+                            break
+                        else:
+                            continue
+
+                    if kde_category_found:
+                        break
+                case 2:
+                    kde_category_url = f"https://apps.kde.org/{package_name}/"
 
                     if not self.web_scraper.check_website_availabilty(kde_category_url):
                         self.logger.debug(f"[Debug]: Website: {kde_category_url} is not reachable")
                         break
 
-                    response = self.web_scraper.fetch_page_content_old(kde_category_url)
+                    response = self.web_scraper.fetch_page_content(kde_category_url)
                     if not response:
                         self.logger.debug(
                             f"[Debug]: No response received from {kde_category_url} while getting the KDE package changelog"
@@ -1359,53 +1399,29 @@ class PackageHandler:
                     else:
                         self.logger.error(f"[Error]: Couldn't extract KDE package category from {kde_category_url}")
 
-        kde_gitlab_url = None
-        if kde_category_found:
+        if kde_category_found and not kde_gitlab_url:
             for category in kde_package_categories:
                 if category in kde_category.lower():
-                    kde_gitlab_url = "https://invent.kde.org/" + category + "/" + package_name
+                    kde_gitlab_url = f"https://invent.kde.org/{category}/{package_name}/"
 
             if not kde_gitlab_url:
                 self.logger.error(f"[Error]: Unknown KDE GitLab group in: {kde_category}")
-        else:
-            for category in kde_package_categories:
-                kde_gitlab_url = "https://invent.kde.org/" + category + "/" + package_name
-
-                # We can't use the check_website_availability function of web_scraper since a wrong
-                # URL won't lead to a 404 or another error return code but to a sign in page which
-                # is interpreted as accessible.
-                # Example:
-                # - https://invent.kde.org/libraries/baloo-widgets (correct URL)
-                # - https://invent.kde.org/plasma/baloo-widgets (wrong URL)
-                # This is why we look for a specific element on the website which only exists on the
-                # correct website.
-                response = self.web_scraper.fetch_page_content_old(kde_gitlab_url)
-                if not response:
-                    self.logger.debug(
-                        f"[Debug]: No response received from {kde_gitlab_url} while getting the KDE package changelog"
-                    )
-                    continue
-
-                kde_package_name_extracted = self.web_scraper.find_element(
-                    response, "a", text=lambda text: text and package_name in text
-                )
-
-                if kde_package_name_extracted is not None and package_name in kde_package_name_extracted.text:
-                    self.logger.debug(f"[Debug]: KDE GitLab package URL: {kde_gitlab_url}")
-                    break
 
         if kde_gitlab_url:
-            package_changelog_temp = self.get_changelog_compare_package_tags(
+            package_changelog = self.get_changelog_compare_package_tags(
                 kde_gitlab_url,
                 current_version_altered,
                 new_version_altered,
                 package_name,
                 "major",
                 override_shown_tag,
+                None,
+                None,
+                kde_category,
             )
 
-            if package_changelog_temp:
-                return package_changelog_temp
+            if package_changelog:
+                return package_changelog
             else:
                 return None
         else:
