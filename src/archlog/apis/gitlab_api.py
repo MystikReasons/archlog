@@ -186,6 +186,12 @@ class GitLabAPI:
         project path: kernel-firmware
         package name: linux-firmware
 
+        Example URL: https://invent.kde.org/plasma/spectacle/
+        package repository: kde
+        tld: org
+        project path: plasma
+        package name: spectacle
+
         :param upstream_url: The URL of the upstream GitLab repository
         :type upstream_url: str
         :return: A tuple containing the package repository (domain subpart), the top domain level (tld),
@@ -193,7 +199,10 @@ class GitLabAPI:
                 or None if the URL doesn't match the expected format.
         :rtype: Optional[Tuple[str, str, str, str]]
         """
-        match = re.search(r"https://gitlab(?:\.([^.]+))?\.(com|org)/([^/]+)/([^/]+)(?:/|$)", upstream_url)
+        if "invent.kde" in upstream_url:
+            match = re.search(r"https://invent\.([^.]+)\.(org)/([^/]+)/([^/]+)(?:/|$)", upstream_url)
+        else:
+            match = re.search(r"https://gitlab(?:\.([^.]+))?\.(com|org)/([^/]+)/([^/]+)(?:/|$)", upstream_url)
 
         if match:
             package_repository = match.group(1)

@@ -8,6 +8,7 @@
 - **Test** Add tests for getting the closest package tag
 - **Test** Add tests for extracting information for GitLab upstream URL's
 - **GitLab API** extract_upstream_url_information now extracts the TLD too
+- **GitLab API** extract_upstream_url_information can now also handle KDE URL's
 
 ### Bug fixes
 
