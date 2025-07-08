@@ -755,7 +755,7 @@ class PackageHandler:
         enabled_repositories: List[str],
         package_name: str,
         package_architecture: str,
-    ) -> str:
+    ) -> Optional[str]:
         """Determines the repository from which a specified package can be retrieved.
         This function checks the availability of the specified package in each of the enabled repositories.
         It constructs URLs for each repository based on the package name and architecture, and verifies
@@ -769,7 +769,7 @@ class PackageHandler:
         :param package_architecture: The architecture of the package (e.g., 'x86_64').
         :type package_architecture: str
         :return: The name of the reachable repository if exactly one is found.
-        :rtype: str
+        :rtype: Optional[str]
         """
         reachable_repository = []
         for repository in enabled_repositories:
@@ -784,9 +784,9 @@ class PackageHandler:
         # repositories or the testing in the config file.
         if len(reachable_repository) > 1:
             self.logger.error(
-                "[Error]: Multiple repositories found. Please use either stable or testing in the config file."
+                "[Error]: Multiple repositories found. Please use either stable or testing in the config file. Skipping package."
             )
-            exit(1)
+            return None
         else:
             return reachable_repository
 

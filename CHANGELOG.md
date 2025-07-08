@@ -9,6 +9,8 @@
 - **Test** Add tests for extracting information for GitLab upstream URL's
 - **GitLab API** extract_upstream_url_information now extracts the TLD too
 - **GitLab API** extract_upstream_url_information can now also handle KDE URL's
+- **Package Handler, GitLab API, Test** KDE packages now use the GitLab REST API instead of the old playwright implementation
+- **Package Handler** Don't throw an exit when the package was found in multiple repositories, return None instead
 
 ### Bug fixes
 
