@@ -143,7 +143,7 @@ class GitLabAPI:
 
     def get_package_tags(self, base_url: str, project_path: str) -> Optional[List[Tuple[str, str]]]:
         """
-        Returns a list of commits between two tags for a given GitLab project.
+        Returns a list of package tags for a given GitLab project.
         Example URLs:
         - https://gitlab.archlinux.org/api/v4/projects/archlinux%2Fpackaging%2Fpackages%2Fmesa/repository/tags
         - https://gitlab.gnome.org/api/v4/projects/GNOME%2Fadwaita-icon-theme/repository/tags
@@ -152,15 +152,15 @@ class GitLabAPI:
         :type base_url: str
         :param project_path: Project path, e.g. 'archlinux/packaging/packages/linux'
         :type project_path: str
-        :return: List of package tags and their creation dates, or None on failure
-        :rtype: Optional[List[Tuple[str, str]]]
+        :return: List of package tags, or None on failure
+        :rtype: Optional[List[Tuple[str]]]
         """
         encoded_path = urllib.parse.quote_plus(project_path)
         endpoint = f"{encoded_path}/repository/tags"
 
         response = self.__get(base_url, endpoint)
         if response:
-            return [(tag.get("name", ""), tag.get("created_at", "")) for tag in response]
+            return [tag.get("name", "") for tag in response]
         else:
             return None
 

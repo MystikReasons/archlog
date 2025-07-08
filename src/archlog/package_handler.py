@@ -1152,8 +1152,8 @@ class PackageHandler:
 
             if upstream_package_tags:
                 # Log upstream package tags for debug reasons
-                for tag, creation_date in upstream_package_tags:
-                    self.logger.debug(f"[Debug]: Upstream package tag: {tag} Creation date: {creation_date}")
+                for tag in upstream_package_tags:
+                    self.logger.debug(f"[Debug]: Upstream package tag: {tag}")
 
                 # Check if the current_tag and the new_tag/override_shown_new_tag are not in the upstream package tags
                 # If not, find the closest one to use
