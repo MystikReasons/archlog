@@ -417,7 +417,7 @@ class PackageHandler:
         """
         package_changelog = []
 
-        for index, (release, date) in enumerate(intermediate_tags):
+        for index, (release) in enumerate(intermediate_tags):
             if index == 0:
                 first_compare_main = package.current_main_altered
                 first_compare_suffix = package.current_suffix
