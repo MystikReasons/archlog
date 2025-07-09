@@ -826,11 +826,11 @@ class PackageHandler:
 
     def get_package_tags(
         self, url: str, base_url: Optional[str] = None, project_path: Optional[str] = None
-    ) -> Optional[List[Tuple[str, str]]]:
+    ) -> Optional[List[str]]:
         """Retrieves release tags and their associated timestamps from a source code hosting website.
         This function sends an HTTP GET request to the specified URL, parses the HTML content to find
-        SVG elements representing tags and their corresponding timestamps. It then returns a list of tuples
-        where each tuple contains a release tag and its associated timestamp. The function also transforms
+        SVG elements representing tags and their corresponding timestamps. It then returns a list which
+        contains the release tags. The function also transforms
         tags with a version prefix of '1:' to '1-' for compatibility with repository host formats.
 
         :param url: The URL of the webpage to retrieve and parse.
@@ -839,74 +839,34 @@ class PackageHandler:
         :type base_url: str
         :param project_path: path to the package for the API, e.g. 'archlinux/packaging/packages/linux'
         :type project_path: str
-        :return: A list of tuples where each tuple contains a release tag and its associated timestamp.
-                 The timestamp has the format: 2024-12-30T19:45:26.000Z
+        :return: A list of release tags.
                  If an error occurs during the request or parsing, or if no relevant data is found, None is returned.
-        :rtype: Optional[List[Tuple[str, str]]]
+        :rtype: Optional[List[str]]
         """
         try:
-            if "gitlab" in url:
-                if base_url and project_path:
-                    combined_info = self.gitlab_api.get_package_tags(base_url, project_path)
-                else:
-                    self.logger.debug(
-                        f"[Debug]: base_url or project_path is missing for {url} to fetch the release tags"
-                    )
-                    return None
+            response = self.web_scraper.fetch_page_content(url)
+            if not response:
+                self.logger.debug(f"[Debug]: No response received from {url}")
 
-                if not combined_info:
-                    self.logger.debug(f"[Debug]: No release tags found in {url}")
-                    return None
-            elif "github" in url:
-                response = self.web_scraper.fetch_page_content(url)
-                if not response:
-                    self.logger.debug(f"[Debug]: No response received from {url}")
-                    return None
+            release_tags_raw = self.web_scraper.find_all_elements(
+                response, "svg", attrs={"data-testid": "tag-icon"}
+            )
 
-                # TODO: Currently it does not search for further tags if the Github page has a "Next" button.
-                release_tags_raw = self.web_scraper.find_all_elements(response, "a", class_="Link--primary")
+            if not release_tags_raw:
+                self.logger.debug(f"[Debug]: No raw release tags found in {url}")
+                return None
 
-                if not release_tags_raw:
-                    return None
+            release_tags = [tag.find_next("a").text for tag in release_tags_raw]
 
-                release_tags = [tag.text.strip() for tag in release_tags_raw]
-                time_tags_raw = self.web_scraper.find_all_elements(response, "relative-time")
-
-                if not time_tags_raw:
-                    return None
-            else:  # TODO: Check if this is needed outside of the old GitLab implementation
-                response = self.web_scraper.fetch_page_content(url)
-                if not response:
-                    self.logger.debug(f"[Debug]: No response received from {url}")
-
-                release_tags_raw = self.web_scraper.find_all_elements(
-                    response, "svg", attrs={"data-testid": "tag-icon"}
-                )
-
-                if not release_tags_raw:
-                    self.logger.debug(f"[Debug]: No raw release tags found in {url}")
-                    return None
-
-                release_tags = [tag.find_next("a").text for tag in release_tags_raw]
-                time_tags_raw = self.web_scraper.find_all_elements(response, "time")
-
-                if not time_tags_raw:
-                    self.logger.debug(f"[Debug]: No raw time tags found in {url}")
-                    return None
-
-            if "gitlab" not in url:
-                time_tags = [tag["datetime"] for tag in time_tags_raw]
-                combined_info = list(zip(release_tags, time_tags))
-
-            for index, (tag, creation_date) in enumerate(combined_info):
+            for index, (tag) in enumerate(release_tags):
                 # Some Arch packages do have versions that look like this: 1:1.16.5-2
                 # On their repository host (GitLab) the tags do like this: 1-1.16.5-2
                 # In order to make a tag compare on GitLab, transform '1:' to '1-'
                 transformed_tag = tag.replace("1:", "1-")
-                self.logger.debug(f"[Debug]: Release tag: {transformed_tag} Creation date: {creation_date}")
-                combined_info[index] = (transformed_tag, creation_date)
+                self.logger.debug(f"[Debug]: Release tag: {transformed_tag}")
+                release_tags[index] = transformed_tag
 
-            return combined_info
+            return release_tags
         except Exception as ex:
             self.logger.error(
                 f"[Error]: An unexpected error occurred while parsing the HTML or extracting tag information: {ex}"
@@ -1157,10 +1117,8 @@ class PackageHandler:
 
                 # Check if the current_tag and the new_tag/override_shown_new_tag are not in the upstream package tags
                 # If not, find the closest one to use
-                tag_versions = [tag[0] for tag in upstream_package_tags]
-
                 if current_tag not in upstream_package_tags:
-                    closest_match_current_tag = self.get_closest_package_tag(current_tag, tag_versions)
+                    closest_match_current_tag = self.get_closest_package_tag(current_tag, upstream_package_tags)
 
                     if closest_match_current_tag:
                         self.logger.debug(
@@ -1173,7 +1131,7 @@ class PackageHandler:
 
                 if new_tag or override_shown_new_tag not in upstream_package_tags:
                     new_tag_to_check = override_shown_new_tag or new_tag
-                    closest_match_new_tag = self.get_closest_package_tag(new_tag_to_check, tag_versions)
+                    closest_match_new_tag = self.get_closest_package_tag(new_tag_to_check, upstream_package_tags)
 
                     if closest_match_new_tag:
                         self.logger.debug(
@@ -1188,8 +1146,8 @@ class PackageHandler:
                 # KDE GitLab compare tags URL: https://invent.kde.org/plasma/plasma-firewall/-/compare/v6.3.5...v6.3.90
                 compare_tags_url = (
                     f"{source.rstrip('/')}/compare/"
-                    f"{(closest_match_current_tag or [current_tag])[0]}..."
-                    f"{(closest_match_new_tag or [new_tag])[0]}"
+                    f"{(closest_match_current_tag or [current_tag])}..."
+                    f"{(closest_match_new_tag or [new_tag])}"
                     if "github" in source
                     else f"{source.rstrip('/')}/-/compare/"
                     f"{closest_match_current_tag or current_tag}..."
@@ -1448,7 +1406,7 @@ class PackageHandler:
         current_tag_altered = current_tag.replace(":", "-")
         new_tag_altered = new_tag.replace(":", "-")
 
-        for index, (release, time) in enumerate(package_tags):
+        for index, (release) in enumerate(package_tags):
             if release == current_tag_altered:
                 end_index = index
             elif release == new_tag_altered:
