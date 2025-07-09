@@ -13,6 +13,8 @@ class PathManager:
         self.changelog_dir = Path(os.path.expanduser(paths.get("changelog-dir", "~/archlog/changelog")))
         self.logs_dir = Path(os.path.expanduser(paths.get("logs-dir", "~/.local/state/archlog/logs")))
 
+        self.timestamp_changelog = get_datetime_now("%Y%m%d-%H%M")
+
     def get_logs_path(self) -> Path:
         return self.logs_dir
 
@@ -23,4 +25,4 @@ class PathManager:
         return self.changelog_dir
 
     def get_changelog_filename(self) -> str:
-        return get_datetime_now("%Y%m%d-%H%M-changelog.json")
+        return f"{self.timestamp_changelog}-changelog.json"

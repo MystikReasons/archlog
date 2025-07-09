@@ -20,6 +20,7 @@
 - **Package Handler** Improve method to get the closest package tag. This fixes some KDE packages
 - **Package Handler** Improve package tag and package changelog detection for gitlab.com URL's
 - **Package Handler** Fix GitLab API URL construction for package tag retrieval and package changelog retrieval
+- **General** Use the same datetime for creating and reading the changelog files
 
 # 1.0.8 (2025-06-15)
 
