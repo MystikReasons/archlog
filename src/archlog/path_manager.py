@@ -23,4 +23,4 @@ class PathManager:
         return self.changelog_dir
 
     def get_changelog_filename(self) -> str:
-        return get_datetime_now("%Y-%m-%d-changelog.json")
+        return get_datetime_now("%Y%m%d-%H%M-changelog.json")

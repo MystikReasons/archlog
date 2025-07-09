@@ -28,7 +28,7 @@ class ConfigHandler:
         self.path_manager = PathManager(user_paths)
         self.config_path = self.path_manager.get_config_path(config_filename)
 
-        self.changelog_filename = get_datetime_now("%Y-%m-%d-changelog.json")
+        self.changelog_filename = get_datetime_now("%Y%m%d-%H%M-changelog.json")
         self.changelog_path = self.path_manager.get_changelog_path()
         self.changelog_path.mkdir(parents=True, exist_ok=True)
 

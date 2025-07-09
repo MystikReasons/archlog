@@ -13,6 +13,7 @@
 - **Package Handler** Don't throw an exit when the package was found in multiple repositories, return None instead
 - **GitLab API** Remove the extraction of the creation date of package tags since it is currently not relevant and not used
 - **Web Scraper** Remove all references regarding the creation date of package tags since it is currently not relevant and not used
+- **General** Change changelog filename from "%Y-%m-%d-changelog.json" to "%Y%m%d-%H%M-changelog.json" in order to create multiple changelog files per day
 
 ### Bug fixes
 
