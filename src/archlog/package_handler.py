@@ -1185,8 +1185,8 @@ class PackageHandler:
         else:
             compare_tags_url = (
                 f"{source.rstrip('/')}/compare/"
-                f"{(closest_match_current_tag or [current_tag])}..."
-                f"{(closest_match_new_tag or [new_tag])}"
+                f"{(closest_match_current_tag or current_tag)}..."
+                f"{(closest_match_new_tag or new_tag)}"
             )
 
         self.logger.debug(f"[Debug]: Compare tags URL: {compare_tags_url}")
