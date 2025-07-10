@@ -10,6 +10,7 @@ import tomllib
 
 from archlog.web_scraper import WebScraper
 from archlog.apis.gitlab_api import GitLabAPI
+from archlog.apis.github_api import GitHubAPI
 from archlog.apis.archlinux_api import ArchLinuxAPI
 
 
@@ -29,6 +30,7 @@ class PackageHandler:
         self.config = config
         self.web_scraper = WebScraper(self.logger, self.config)
         self.gitlab_api = GitLabAPI(self.logger)
+        self.github_api = GitHubAPI(self.logger)
         self.archlinux_api = ArchLinuxAPI(self.logger)
         self.enabled_repositories = []
         self.PackageInfo = namedtuple(
@@ -848,9 +850,7 @@ class PackageHandler:
             if not response:
                 self.logger.debug(f"[Debug]: No response received from {url}")
 
-            release_tags_raw = self.web_scraper.find_all_elements(
-                response, "svg", attrs={"data-testid": "tag-icon"}
-            )
+            release_tags_raw = self.web_scraper.find_all_elements(response, "svg", attrs={"data-testid": "tag-icon"})
 
             if not release_tags_raw:
                 self.logger.debug(f"[Debug]: No raw release tags found in {url}")
@@ -950,13 +950,33 @@ class PackageHandler:
                     package_changelog += package_changelog_temp
 
             case url if "github.com" in url:
+                # Some package upstream URL's could look like this from the .nvchecker.toml file:
+                # https://github.com/dbeaver/dbeaver.git
+                # We only need:
+                # https://github.com/dbeaver/dbeaver
+                # otherwise when setting together the compare url tags link for the changelog file
+                # it can cause invalid URL's for the user.
+                parsed_upstream_url = urlparse(url)
+                parts = parsed_upstream_url.path.strip("/").split("/")
+                if len(parts) >= 2:
+                    user, repository = parts[:2]
+                    repository = repository.removesuffix(".git")
+                    url = f"{parsed_upstream_url.scheme}://{parsed_upstream_url.netloc}/{user}/{repository}"
+
+                self.logger.debug(f"[Debug]: GitHub API: Upstream URL {url}")
+
+                package_upstream_url_information = self.github_api.extract_upstream_url_information(url)
+
                 package_changelog_temp = self.get_changelog_compare_package_tags(
                     url,
                     current_tag,
                     new_tag,
-                    package_name,
+                    package_upstream_url_information[1] if package_upstream_url_information[1] else package_name,
                     "major",
                     override_shown_tag,
+                    None,
+                    None,
+                    package_upstream_url_information[0],
                 )
 
                 if package_changelog_temp:
@@ -1089,7 +1109,7 @@ class PackageHandler:
 
         if "major" in release_type:
             if "github" in source:
-                upstream_package_tags = self.get_package_tags(source.rstrip("/") + "/tags")
+                upstream_package_tags = self.github_api.get_package_tags(project_path, package_name)
             elif "gitlab" in source:
                 if project_path:
                     subdomain = f"{package_repository}." if package_repository else ""
@@ -1141,47 +1161,43 @@ class PackageHandler:
                         self.logger.debug(
                             f"[Debug]: No similar tag for {new_tag_to_check} found in the upstream package repository"
                         )
-
-                # GitHub compare tags URL: https://github.com/user/repo/compare/v1.0.0...v2.0.0
-                # KDE GitLab compare tags URL: https://invent.kde.org/plasma/plasma-firewall/-/compare/v6.3.5...v6.3.90
-                compare_tags_url = (
-                    f"{source.rstrip('/')}/compare/"
-                    f"{(closest_match_current_tag or [current_tag])}..."
-                    f"{(closest_match_new_tag or [new_tag])}"
-                    if "github" in source
-                    else f"{source.rstrip('/')}/-/compare/"
-                    f"{closest_match_current_tag or current_tag}..."
-                    f"{closest_match_new_tag or new_tag}"
-                )
             else:
                 self.logger.debug(f"[Debug]: No upstream package tags found for {source}")
 
-        if not compare_tags_url:
-            if "github" in source:
-                compare_tags_url = f"{source.rstrip('/')}/-/compare/{current_tag}...{new_tag}"
-            elif "git.kernel.org" in source:
-                # Example:
-                # https://web.git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git/log/?id=v34.1&id2=v34
-                compare_tags_url = f"{source}/log/?id={new_tag}&id2={current_tag}"
-            else:
-                compare_tags_url = f"{source.rstrip('/')}/compare/{current_tag}...{new_tag}"
+        # GitHub compare tags URL: https://github.com/user/repo/compare/v1.0.0...v2.0.0
+        # KDE GitLab compare tags URL: https://invent.kde.org/plasma/plasma-firewall/-/compare/v6.3.5...v6.3.90
+        if "github" in source:
+            compare_tags_url = (
+                f"{source.rstrip('/')}/compare/"
+                f"{(closest_match_current_tag or current_tag)}..."
+                f"{(closest_match_new_tag or new_tag)}"
+            )
+        elif "gitlab" in source:
+            compare_tags_url = (
+                f"{source.rstrip('/')}-/compare/"
+                f"{(closest_match_current_tag or current_tag)}..."
+                f"{(closest_match_new_tag or new_tag)}"
+            )
+        elif "git.kernel.org" in source:
+            # Example:
+            # https://web.git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git/log/?id=v34.1&id2=v34
+            compare_tags_url = f"{source}/log/?id={new_tag}&id2={current_tag}"
+        else:
+            compare_tags_url = (
+                f"{source.rstrip('/')}/compare/"
+                f"{(closest_match_current_tag or [current_tag])}..."
+                f"{(closest_match_new_tag or [new_tag])}"
+            )
 
         self.logger.debug(f"[Debug]: Compare tags URL: {compare_tags_url}")
 
-        if "gitlab" not in source and "invent.kde" not in source:
+        if all(s not in source for s in ["gitlab", "invent.kde", "github"]):
+            kwargs = "commit-row-message"
+            tag = "a"
             response = self.web_scraper.fetch_page_content(compare_tags_url)
             if response is None:
                 self.logger.debug(f"[Debug]: No response received from {compare_tags_url}")
                 return None
-
-        # TODO: If the source hosting site is Github which can display commits only on multiple pages, how
-        #       should we handle that?
-        if "github" in source:
-            kwargs = "mb-1"
-            tag = "p"
-        else:
-            kwargs = "commit-row-message"
-            tag = "a"
 
         commits = None
         if "git.kernel.org" in source:
@@ -1206,6 +1222,12 @@ class PackageHandler:
                         closest_match_current_tag if closest_match_current_tag else current_tag,
                         closest_match_new_tag if closest_match_new_tag else new_tag,
                     )
+                else:
+                    self.logger.debug(
+                        f"""[Debug]: Error, required parameter 'project_path' 
+                        is missing for getting the GitLab package changelog
+                        """
+                    )
         elif "invent.kde" in source:
             if project_path:
                 project_full_path = f"{project_path}/{package_name}"
@@ -1214,6 +1236,26 @@ class PackageHandler:
                     project_full_path,
                     closest_match_current_tag if closest_match_current_tag else current_tag,
                     closest_match_new_tag if closest_match_new_tag else new_tag,
+                )
+            else:
+                self.logger.debug(
+                    f"""[Debug]: Error, required parameter 'project_path' 
+                        is missing for getting the invent.kde package changelog
+                        """
+                )
+        elif "github" in source:
+            if project_path:
+                commits = self.github_api.get_commits_between_tags(
+                    project_path,
+                    package_name,
+                    closest_match_current_tag if closest_match_current_tag else current_tag,
+                    closest_match_new_tag if closest_match_new_tag else new_tag,
+                )
+            else:
+                self.logger.debug(
+                    f"""[Debug]: Error, required parameter 'project_path' 
+                        is missing for getting the GitHub package changelog
+                        """
                 )
         else:
             commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
@@ -1224,14 +1266,14 @@ class PackageHandler:
 
         if "git.kernel.org" in source:
             commit_messages = [commit.find("a").get_text(strip=True) for commit in commits]
-        elif "gitlab" in source or "invent.kde" in source:
+        elif any(s in source for s in ["gitlab", "invent.kde", "github"]):
             commit_messages = [commit[0] for commit in commits]
         else:
             commit_messages = [commit.get_text(strip=True) for commit in commits]
 
-        if "github" in source or "git.kernel.org" in source:
+        if "git.kernel.org" in source:
             commit_urls = [urljoin(source, commit.find("a")["href"]) for commit in commits]
-        elif "gitlab" in source or "invent.kde" in source:
+        elif any(s in source for s in ["gitlab", "invent.kde", "github"]):
             commit_urls = [commit[2] for commit in commits]
         else:
             commit_urls = [urljoin(source, commit.get("href")) for commit in commits]
