@@ -1427,21 +1427,21 @@ class PackageHandler:
         else:
             return None
 
-    def find_intermediate_tags(self, package_tags, current_tag: str, new_tag: str) -> Optional[List[Tuple[str, str]]]:
+    def find_intermediate_tags(self, package_tags: List[str], current_tag: str, new_tag: str) -> Optional[List[str]]:
         """Finds and returns intermediate tags between the current and new version tags for a package.
         This method looks for tags between the current and new versions within a list of package tags.
         It ensures that intermediate versions are correctly identified, reversed if necessary, and returned
         for further processing.
 
-        :param package_tags: A list of tuples containing release tags and their corresponding release times.
-        :type package_tags: List[Tuple[str, str]]
+        :param package_tags: A list containing release tags.
+        :type package_tags: List[str]
         :param current_tag: The current version tag to start from.
         :type current_tag: str
         :param new_tag: The new version tag to search for.
         :type new_tag: str
         :return: A list of intermediate tags between the current and new versions, or None if no intermediate
                 tags are found.
-        :rtype: Optional[List[Tuple[str, str]]]
+        :rtype: Optional[List[str]]
         """
         start_index = end_index = None
 
