@@ -425,7 +425,7 @@ class PackageHandler:
                 first_compare_suffix = package.current_suffix
                 first_compare_version = package.current_version_altered
             else:
-                first_compare_version = intermediate_tags[index - 1][0]
+                first_compare_version = intermediate_tags[index - 1]
                 first_compare_main, first_compare_suffix = self.split_package_tag(first_compare_version)
 
             # Package tags can look like this:

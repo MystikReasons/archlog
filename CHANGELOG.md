@@ -25,6 +25,7 @@
 - **Package Handler** Fix wrong compare-url-tags-arch URL for the changelog file
 - **Package Handler** Fix wrong compare-url-tags-origin URL for the changelog file when facing for example KDE packages
 - **Package Handler** Correct docstring of find_intermediate_tags
+- **Package Handler** Fixed crash regarding intermediate tags where it wanted to access the it with the outdated structure
 
 # 1.0.8 (2025-06-15)
 
