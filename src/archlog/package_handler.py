@@ -290,17 +290,7 @@ class PackageHandler:
         package_upstream_url_nvchecker = None
         if nvchecker_content:
             parsed_content = tomllib.loads(nvchecker_content)
-            if parsed_content[package_name_search].get("url"):
-                package_upstream_url_nvchecker = parsed_content[package_name_search]["url"]
-            elif parsed_content[package_name_search].get("git"):
-                package_upstream_url_nvchecker = parsed_content[package_name_search]["git"]
-
-                if ".git" in package_upstream_url_nvchecker:
-                    package_upstream_url_nvchecker = package_upstream_url_nvchecker.removesuffix(".git")
-            else:
-                self.logger.debug(
-                    f"[Debug]: {package.package_name}: Found no URL in .nvchecker.toml in {package_source_files_url}."
-                )
+            package_upstream_url_nvchecker = self.extract_upstream_url_nvchecker(parsed_content[package_name_search])
         else:
             self.logger.debug(
                 f"[Debug]: {package.package_name}: Found no .nvchecker.toml file in {package_source_files_url}."
@@ -1476,3 +1466,36 @@ class PackageHandler:
             return intermediate_tags
         else:
             return None
+
+    def extract_upstream_url_nvchecker(self, parsed_content: Dict) -> Optional[str]:
+        """Extracts the upstream repository URL from nvchecker configuration content.
+
+        Supported sources:
+        - source = "github", e.g. github = "moby/moby" → "https://github.com/moby/moby"
+        - source = "git", e.g. git = "https://github.com/curl/curl.git" → "https://github.com/curl/curl"
+        - source = "gitlab", e.g. gitlab = "archlinux/archlinux-keyring", host = "gitlab.archlinux.org"
+        → "https://gitlab.archlinux.org/archlinux/archlinux-keyring"
+        - url (direct upstream URL) → returned as-is
+
+        :param parsed_content: Parsed TOML content for a single package.
+        :type parsed_content: Dict
+        :return: A list of intermediate tags between the current and new versions, or None if no intermediate
+                tags are found.
+        :rtype: Optional[str]
+        """
+        package_upstream_url_nvchecker = None
+
+        if parsed_content.get("url"):  # Direct URL
+            package_upstream_url_nvchecker = parsed_content["url"]
+        elif parsed_content.get("git"):  # Git (e.g. GitHub URLs with/without .git)
+            package_upstream_url_nvchecker = parsed_content["git"]
+
+            if package_upstream_url_nvchecker.endswith(".git"):
+                package_upstream_url_nvchecker = package_upstream_url_nvchecker.removesuffix(".git")
+        elif parsed_content.get("github"):
+            package_upstream_url_nvchecker = f"https://github.com/{parsed_content['github']}"
+        elif parsed_content.get("gitlab"):
+            host = parsed_content.get("host", "gitlab.com")
+            package_upstream_url_nvchecker = f"https://{host}/{parsed_content['gitlab']}"
+
+        return package_upstream_url_nvchecker

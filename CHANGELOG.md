@@ -16,6 +16,7 @@
 - **General** Change changelog filename from "%Y-%m-%d-changelog.json" to "%Y%m%d-%H%M-changelog.json" in order to create multiple changelog files per day
 - **GitHub API** Initial version of the GitHub REST API implementation
 - **Package Handler**, **Test** Extend regex of get_closest_package_tag and tests to handle additional cases
+- **Package Handler** Move logic of nvchecker.toml URL extraction into a separate function and handle additional cases
 
 ### Bug fixes
 
