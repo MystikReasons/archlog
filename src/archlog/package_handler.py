@@ -1045,7 +1045,7 @@ class PackageHandler:
         :rtype: Optional[str]
         """
         # Preprocess current_tag: remove leading digits + dash (e.g., "1-") and trailing "-1"
-        cleaned_tag = re.sub(r"^(\d+-)|(-\d+$)", "", current_tag)
+        cleaned_tag = re.sub(r"(^\d{1,2}-|^[A-Za-z]+-|-\d+$)", "", current_tag)
 
         matches = process.extract(cleaned_tag, tags, score_cutoff=threshold)
 
