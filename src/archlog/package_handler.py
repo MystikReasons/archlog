@@ -582,13 +582,11 @@ class PackageHandler:
 
         return package_architecture
 
-    def get_arch_package_compare_information(self, url: str) -> Optional[Dict[str, Optional[str]]]:
-        """Extracts the source URL and associated tag information from an Arch package compare webpage.
-
-        This function sends an HTTP GET request to the specified URL, parses the HTML content,
-        and searches for lines that start with "source = https" or "source = git+https". It then
-        extracts the source URLs for both the old and new package versions. Depending on the URL type,
-        it extracts a base URL segment and, if available, a version tag (e.g., "#tag=...").
+    def get_arch_package_compare_information(
+        self, package_name: str, tag_from: str, tag_to: str
+    ) -> Optional[Dict[str, Optional[str]]]:
+        """Extracts the new and old source URL and associated tag (if available) information
+        from an Arch package tag compare webpage.
 
         The function computes a similarity ratio between the extracted base URLs using SequenceMatcher.
         If the similarity is >= 0.8, it returns a dictionary with the following keys:
@@ -601,42 +599,50 @@ class PackageHandler:
         If the HTTP request fails, no valid source URLs are found, or the similarity ratio is below the
         threshold, the function returns None.
 
-        :param url: The compare URL of the Arch package.
-        :type url: str
+        :param package_name: The package name of the Arch package.
+        :type package_name: str
+        :param tag_from: Older tag (e.g. 'v6.8.arch1-1')
+        :type tag_from: str
+        :param tag_to: Newer tag (e.g. 'v6.8.arch1-2')
+        :type tag_to: str
         :return: Dict with keys: 'new_source_url', 'old_source_url', 'new_source_tag', 'old_source_tag',
              or None if extraction fails or similarity is too low.
         :rtype: Optional[Dict[str, Optional[str]]]
         """
         try:
-            response = self.web_scraper.fetch_page_content_old(url)
-            if not response:
-                self.logger.debug(f"[Debug]: No response received from {url}")
+            srcinfo_content = self.gitlab_api.get_diff_between_tags(
+                self.gitlab_api.base_urls["Arch"], "archlinux/packaging/packages/" + package_name, tag_from, tag_to
+            )
+
+            if srcinfo_content:
+                source_urls_old = []
+                source_urls_new = []
+                url_pattern = re.compile(r"(https?://|git\+)", re.IGNORECASE)
+
+                for index, (diff) in enumerate(srcinfo_content):
+                    if diff["new_path"] == ".SRCINFO" and diff["old_path"] == ".SRCINFO":
+                        self.logger.debug(
+                            f"[Debug]: Changes found for .SRCINFO for package {package_name}: {diff['diff']}"
+                        )
+
+                        for line in diff["diff"].splitlines():
+                            if "source =" in line and url_pattern.search(line):
+                                if line.startswith("+") and not line.startswith("+++"):
+                                    source_urls_new.append(line)
+                                    print(f"  NEU: {line[1:].strip()}")
+                                elif line.startswith("-") and not line.startswith("---"):
+                                    source_urls_old.append(line)
+                                    print(f"  ALT: {line[1:].strip()}")
+            else:
+                self.logger.debug(
+                    f"[Debug]: No response received from {package_name} regarding diff from current to new tag"
+                )
                 return None
 
-            old_lines = self.web_scraper.find_all_elements(response, "tr", class_="line_holder old")
-
-            new_lines = self.web_scraper.find_all_elements(response, "tr", class_="line_holder new")
-
-            # Example on how the URL's could look like:
-            # source = expat::git+https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
-            #
-            source_urls_old = []
-            source_urls_new = []
-
-            for line in old_lines:
-                text = line.get_text(strip=True)
-                match = re.search(r"(https://).*", text)
-                if match:
-                    source_urls_old.append(match.group(0))
-
-            for line in new_lines:
-                text = line.get_text(strip=True)
-                match = re.search(r"(https://).*", text)
-                if match:
-                    source_urls_new.append(match.group(0))
-
             if not source_urls_old or not source_urls_new:
-                self.logger.debug(f"[Debug]: Couldn't find source nodes either for new or old in {url}")
+                self.logger.debug(
+                    f"[Debug]: Couldn't find source nodes either for new or old in {package_name} regarding diff from current to new tag"
+                )
                 return None
 
             max_length = max(len(source_urls_old), len(source_urls_new))
@@ -739,7 +745,7 @@ class PackageHandler:
                 return None
 
         except Exception as ex:
-            self.logger.error(f"[Error]: Unexpected error while processing URL {url}: {ex}")
+            self.logger.error(f"[Error]: Unexpected error while processing the package {package_name}: {ex}")
             return None
 
     def get_package_repository(
@@ -984,11 +990,7 @@ class PackageHandler:
                     package_changelog += package_changelog_temp
 
             case _:
-                # Example:
-                # https://gitlab.archlinux.org/archlinux/packaging/packages/abseil-cpp/-/compare/20240722.1-1...20250127.0-1
-                compare_arch_tags_url = f"{package_source_files_url}/compare/{current_tag}...{new_tag}"
-
-                arch_package_information = self.get_arch_package_compare_information(compare_arch_tags_url)
+                arch_package_information = self.get_arch_package_compare_information(package_name, current_tag, new_tag)
 
                 if arch_package_information is None:
                     return None

@@ -18,6 +18,7 @@
 - **Package Handler**, **Test** Extend regex of get_closest_package_tag and tests to handle additional cases
 - **Package Handler** Move logic of nvchecker.toml URL extraction into a separate function and handle additional cases
 - **Test** Add tests for extracting the URL out of the content of nvchecker.toml
+- **General** Removed playwright as a method of extraction
 
 ### Bug fixes
 

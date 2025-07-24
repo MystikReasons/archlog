@@ -3,7 +3,7 @@ import urllib.parse
 import re
 import time
 import base64
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 
 
 class GitLabAPI:
@@ -138,6 +138,35 @@ class GitLabAPI:
                 (commit.get("title", ""), commit.get("created_at", ""), commit.get("web_url"))
                 for commit in response.get("commits", "")
             ]
+        else:
+            return None
+
+    def get_diff_between_tags(
+        self, base_url: str, project_path: str, tag_from: str, tag_to: str
+    ) -> Optional[List[Dict[str, Any]]]:
+        """
+        Returns a list of diffs between two tags for a given GitLab project.
+        Example URLs:
+        - https://gitlab.archlinux.org/api/v4/projects/archlinux%2Fpackaging%2Fpackages%2Fdiscord/repository/compare?from=1-0.0.101-1&to=1-0.0.102-1
+
+        :param base_url: Use GitLabAPI.base_urls for common types, e.g. https://gitlab.archlinux.org/api/v4
+        :type base_url: str
+        :param project_path: Project path, e.g. 'archlinux/packaging/packages/linux'
+        :type project_path: str
+        :param tag_from: Older tag (e.g. 'v6.8.arch1-1')
+        :type tag_from: str
+        :param tag_to: Newer tag (e.g. 'v6.8.arch1-2')
+        :type tag_to: str
+        :return: List of diffs between two tags
+        :rtype: Optional[List[Dict[str, Any]]]
+        """
+        encoded_path = urllib.parse.quote_plus(project_path)
+        endpoint = f"{encoded_path}/repository/compare"
+        params = {"from": tag_from, "to": tag_to}
+
+        response = self.__get(base_url, endpoint, params=params)
+        if response:
+            return response["diffs"]
         else:
             return None
 
