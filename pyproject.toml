@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "archlog"
-version = "1.0.8"
+version = "1.0.9"
 description = "View and track Arch Linux package changelogs with version and upstream updates"
 keywords = ["arch", "archlinux", "changelog", "packages", "pacman", "version-tracking", "linux", "tag"]
 readme = "README.md"

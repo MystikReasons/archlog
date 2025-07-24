@@ -629,10 +629,8 @@ class PackageHandler:
                             if "source =" in line and url_pattern.search(line):
                                 if line.startswith("+") and not line.startswith("+++"):
                                     source_urls_new.append(line)
-                                    print(f"  NEU: {line[1:].strip()}")
                                 elif line.startswith("-") and not line.startswith("---"):
                                     source_urls_old.append(line)
-                                    print(f"  ALT: {line[1:].strip()}")
             else:
                 self.logger.debug(
                     f"[Debug]: No response received from {package_name} regarding diff from current to new tag"
