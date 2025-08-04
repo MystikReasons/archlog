@@ -1,3 +1,11 @@
+# 1.1 ()
+
+### Features and enhancements
+
+- **ArchLinux API** Implement retry mechanism if the user runs into problems
+
+### Bug fixes
+
 # 1.0.9 (2025-07-24)
 
 ### Features and enhancements
