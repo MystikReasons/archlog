@@ -140,6 +140,7 @@ class ConfigHandler:
 
         if package.package_name not in existing_data["changelog"]:
             existing_data["changelog"][package.package_name] = {
+                "base package": package.package_base if package.package_base else "-",
                 "current version": package.current_version,
                 "new version": package.new_version,
                 "versions": [],

@@ -33,10 +33,12 @@ class PackageHandler:
         self.github_api = GitHubAPI(self.logger)
         self.archlinux_api = ArchLinuxAPI(self.logger)
         self.enabled_repositories = []
-        self.PackageInfo = namedtuple(
+        self.package_info = namedtuple(
             "PackageInfo",
             [
                 "package_name",
+                "package_base",
+                "package_upstream_url_overview",
                 "current_version",
                 "current_version_altered",
                 "new_version",
@@ -111,8 +113,10 @@ class PackageHandler:
         :param packages: A list of strings, where each string contains a package name
                          followed by the current version and new version information.
         :type packages: List[str]
-        :return: A list of namedTuples. Each namedtuple contains:
-            - package_name (str): The name of the package
+        :return: A list of namedtuples. Each namedtuple contains:
+            - package_name (str): The name of the package.
+            - package_base (str): Base package if the package is derived.
+            - package_upstream_url_overview (str): The upstream overview link of the package.
             - current_version (str): The current version of the package.
             - current_version_altered (str): The altered version of the current version (colon `:` replaced by hyphen `-`).
             - new_version (str): The new version of the package.
@@ -122,12 +126,7 @@ class PackageHandler:
             - new_main (str): The main part of the new version (before the hyphen).
             - current_suffix (str): The suffix of the current version (after the hyphen).
             - new_suffix (str): The suffix of the new version (after the hyphen).
-        :rtype: List[namedtuple(
-                    PackageInfo,
-                    ['package_name', 'current_version', 'current_version_altered',
-                    'new_version', 'new_version_altered', 'current_main',
-                    'current_main_altered', 'new_main', 'current_suffix', 'new_suffix']
-                )]
+        :rtype: List[namedtuple]
         """
         packages_restructured = []
 
@@ -147,6 +146,20 @@ class PackageHandler:
             current_version_altered = current_version
             current_main_altered = current_main
 
+            arch_package_overview_information = self.archlinux_api.get_package_overview_site_information(package_name)
+
+            if not all(arch_package_overview_information):
+                self.logger.error(f"[Error]: Couldn't extract all required information from {package_name}.")
+                return None
+
+            package_upstream_url_overview = arch_package_overview_information[0]
+            # For example bluez-libs is based on bluez
+            package_base = (
+                arch_package_overview_information[1] if arch_package_overview_information[1] != package_name else ""
+            )
+
+            self.logger.info(f"[Info]: Base package of {package_name}: {package_base}")
+
             # Some Arch packages do have versions that look like this: 1:1.16.5-2
             # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
             # To prevent repetitive code which replaces the symbol, we do it here
@@ -156,8 +169,10 @@ class PackageHandler:
                 current_main_altered = current_main_altered.replace(old, new)
 
             packages_restructured.append(
-                self.PackageInfo(
+                self.package_info(
                     package_name,
+                    package_base,
+                    package_upstream_url_overview,
                     current_version,
                     current_version_altered,
                     new_version,
@@ -245,18 +260,7 @@ class PackageHandler:
             + package.package_name
         )
 
-        arch_package_overview_information = self.archlinux_api.get_package_overview_site_information(
-            package.package_name
-        )
-
-        if not all(arch_package_overview_information):
-            self.logger.error(f"[Error]: Couldn't extract all required information from {arch_package_url}.")
-            return None
-
-        package_upstream_url_overview = arch_package_overview_information[0]
-        package_base = arch_package_overview_information[1]  # For example bluez-libs is based on bluez
-        package_name_search = package.package_name if not package_base else package_base
-
+        package_name_search = package.package_name if not package.package_base else package.package_base
         package_source_files_url = self.archlinux_api.get_gitlab_package_url(package_name_search)
 
         self.logger.info(f"[Info]: Arch 'Source Files' URL: {package_source_files_url}")
@@ -304,7 +308,11 @@ class PackageHandler:
                 package,
                 package_name_search,
                 package_source_files_url,
-                package_upstream_url_nvchecker if package_upstream_url_nvchecker else package_upstream_url_overview,
+                (
+                    package_upstream_url_nvchecker
+                    if package_upstream_url_nvchecker
+                    else package.package_upstream_url_overview
+                ),
             )
 
             if package_changelog_temp:
@@ -335,7 +343,11 @@ class PackageHandler:
                 package_changelog += package_changelog_temp
 
             package_changelog_temp = self.get_package_changelog_upstream_source(
-                package_upstream_url_nvchecker if package_upstream_url_nvchecker else package_upstream_url_overview,
+                (
+                    package_upstream_url_nvchecker
+                    if package_upstream_url_nvchecker
+                    else package.package_upstream_url_overview
+                ),
                 package_source_files_url,
                 package,
                 package.current_version_altered,

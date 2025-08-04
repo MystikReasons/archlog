@@ -25,6 +25,7 @@ Currently, only official Arch packages are supported. AUR, Flatpak, and other so
 ### Minor release example
 ```json
 "gdb": {
+        "base package": "-",
         "current version": "15.2-1",
         "new version": "15.2-2",
         "versions": [
@@ -56,6 +57,7 @@ Currently, only official Arch packages are supported. AUR, Flatpak, and other so
 ### Major release example
 ```json
 "xorg-server": {
+        "base package": "-",
         "current version": "21.1.13-1",
         "new version": "21.1.14-1",
         "versions": [

@@ -3,6 +3,7 @@
 ### Features and enhancements
 
 - **ArchLinux API** Implement retry mechanism if the user runs into problems
+- **Changelog** Added base package in changelog output
 
 ### Bug fixes
 
