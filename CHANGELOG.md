@@ -4,6 +4,7 @@
 
 - **ArchLinux API** Implement retry mechanism if the user runs into problems
 - **Changelog** Added base package in changelog output
+- **General** Improve the logic of getting each package changelog
 
 ### Bug fixes
 

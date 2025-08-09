@@ -13,6 +13,23 @@ from archlog.apis.gitlab_api import GitLabAPI
 from archlog.apis.github_api import GitHubAPI
 from archlog.apis.archlinux_api import ArchLinuxAPI
 
+PackageInfo = namedtuple(
+            "PackageInfo",
+            [
+                "package_name",
+                "package_base",
+                "package_upstream_url_overview",
+                "current_version",
+                "current_version_altered",
+                "new_version",
+                "new_version_altered",
+                "current_main",
+                "current_main_altered",
+                "new_main",
+                "current_suffix",
+                "new_suffix",
+            ],
+        )
 
 class PackageHandler:
     """Initializes an instance of the class with the necessary configuration and logger.
@@ -33,23 +50,7 @@ class PackageHandler:
         self.github_api = GitHubAPI(self.logger)
         self.archlinux_api = ArchLinuxAPI(self.logger)
         self.enabled_repositories = []
-        self.package_info = namedtuple(
-            "PackageInfo",
-            [
-                "package_name",
-                "package_base",
-                "package_upstream_url_overview",
-                "current_version",
-                "current_version_altered",
-                "new_version",
-                "new_version_altered",
-                "current_main",
-                "current_main_altered",
-                "new_main",
-                "current_suffix",
-                "new_suffix",
-            ],
-        )
+        self.package_info = PackageInfo
 
         # Get the enabled repositories from the config file
         arch_repositories = self.config.config.get("arch-repositories", [])
@@ -60,7 +61,7 @@ class PackageHandler:
         # Ensures that if already a changelog file from today exists, delete it
         self.config.initialize_changelog_file()
 
-    def get_upgradable_packages(self) -> Optional[List[str]]:
+    def get_upgradable_packages(self) -> Optional[List[Dict[str, str]]]:
         """This function gets via `pacman` all the upgradable packages on the local system.
         It uses first `pacman -Sy` and after that `pacman -Qu`. This will first update the local mirror
         with the server mirror and then print out all upgradable packages.
@@ -69,8 +70,9 @@ class PackageHandler:
         :raises PermissionError: If the command cannot be executed due to insufficient permissions.
         :raises Exception: For any unexpected errors.
         :raises SystemExit: Always called if any exception is encountered, terminating the program.
-        :return: A list of upgradable package names. Each entry in the list is a string.
-        :rtype: List[str]
+        :return: A list of upgradable package names with the current version and the new version.
+                 Each entry in the list is a string.
+        :rtype: Optional[List[Dict[str, str]]]
         """
         if shutil.which("checkupdates") is None:
             self.logger.error(
@@ -91,8 +93,22 @@ class PackageHandler:
                 )
 
                 packages_to_update = update_process.stdout.splitlines()
-                packages_to_update = self.split_package_information(packages_to_update)
-                return packages_to_update
+                packages_to_update_processed = {}
+
+                for index, package in enumerate(packages_to_update, start=1):
+                    parts = package.split(" ")
+                    package_name = parts[0]
+                    current_version = parts[1]
+                    new_version = parts[3]
+
+                    packages_to_update_processed[index] = {
+                        "raw_content": package,
+                        "package_name": package_name,
+                        "current_version": current_version,
+                        "new_version": new_version,
+                    }
+
+                return packages_to_update_processed
             except subprocess.CalledProcessError as ex:
                 self.logger.error(f"[Error]: Command '{ex.cmd}' returned non-zero exit status {ex.returncode}.")
                 self.logger.error("[Error]: Standard Error:")
@@ -107,13 +123,16 @@ class PackageHandler:
                 self.logger.error(f"[Error]: An unexpected error occurred: {ex}")
                 exit(1)
 
-    def split_package_information(self, packages: List[str]) -> List[namedtuple]:
+    def split_package_information(self, package: Dict) -> namedtuple:
         """Splits package information into a list of namedtuples with detailed version information.
 
-        :param packages: A list of strings, where each string contains a package name
-                         followed by the current version and new version information.
-        :type packages: List[str]
-        :return: A list of namedtuples. Each namedtuple contains:
+        :param package: A dictionary containing package data with at least the keys:
+                        - 'raw_content': str
+                        - 'package_name': str
+                        - 'current_version': str
+                        - 'new_version': str
+        :type package: Dict
+        :return: A namedtuple. The namedtuple contains:
             - package_name (str): The name of the package.
             - package_base (str): Base package if the package is derived.
             - package_upstream_url_overview (str): The upstream overview link of the package.
@@ -126,66 +145,59 @@ class PackageHandler:
             - new_main (str): The main part of the new version (before the hyphen).
             - current_suffix (str): The suffix of the current version (after the hyphen).
             - new_suffix (str): The suffix of the new version (after the hyphen).
-        :rtype: List[namedtuple]
+        :rtype: namedtuple
         """
-        packages_restructured = []
+        package_restructured = {}
 
         # Example: automake 1.16.5-2 -> 1.17-1
-        for line in packages:
-            replacements = {"1:": "1-", "2:": "2-", "3:": "3-"}
-            parts = line.split(" ")
-            package_name = parts[0]
-            current_version = parts[1]
-            new_version = parts[3]
-            current_main = parts[1].split("-")[0]
-            new_main = parts[3].split("-")[0]
-            current_suffix = parts[1].split("-")[1]
-            new_suffix = parts[3].split("-")[1]
+        replacements = {"1:": "1-", "2:": "2-", "3:": "3-"}
+        parts = package["raw_content"].split(" ")
+        package_name = parts[0]
+        current_version = parts[1]
+        new_version = parts[3]
+        current_main = parts[1].split("-")[0]
+        new_main = parts[3].split("-")[0]
+        current_suffix = parts[1].split("-")[1]
+        new_suffix = parts[3].split("-")[1]
 
-            new_version_altered = new_version
-            current_version_altered = current_version
-            current_main_altered = current_main
+        new_version_altered = new_version
+        current_version_altered = current_version
+        current_main_altered = current_main
 
-            arch_package_overview_information = self.archlinux_api.get_package_overview_site_information(package_name)
+        arch_package_overview_information = self.archlinux_api.get_package_overview_site_information(package_name)
 
-            if not all(arch_package_overview_information):
-                self.logger.error(f"[Error]: Couldn't extract all required information from {package_name}.")
-                return None
+        if not all(arch_package_overview_information):
+            self.logger.error(f"[Error]: Couldn't extract all required information from {package_name}.")
+            return None
 
-            package_upstream_url_overview = arch_package_overview_information[0]
-            # For example bluez-libs is based on bluez
-            package_base = (
-                arch_package_overview_information[1] if arch_package_overview_information[1] != package_name else ""
-            )
+        package_upstream_url_overview = arch_package_overview_information[0]
+        # For example bluez-libs is based on bluez
+        package_base = (
+            arch_package_overview_information[1] if arch_package_overview_information[1] != package_name else ""
+        )
 
-            self.logger.info(f"[Info]: Base package of {package_name}: {package_base}")
+        # Some Arch packages do have versions that look like this: 1:1.16.5-2
+        # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
+        # To prevent repetitive code which replaces the symbol, we do it here
+        for old, new in replacements.items():
+            new_version_altered = new_version_altered.replace(old, new)
+            current_version_altered = current_version_altered.replace(old, new)
+            current_main_altered = current_main_altered.replace(old, new)
 
-            # Some Arch packages do have versions that look like this: 1:1.16.5-2
-            # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
-            # To prevent repetitive code which replaces the symbol, we do it here
-            for old, new in replacements.items():
-                new_version_altered = new_version_altered.replace(old, new)
-                current_version_altered = current_version_altered.replace(old, new)
-                current_main_altered = current_main_altered.replace(old, new)
-
-            packages_restructured.append(
-                self.package_info(
-                    package_name,
-                    package_base,
-                    package_upstream_url_overview,
-                    current_version,
-                    current_version_altered,
-                    new_version,
-                    new_version_altered,
-                    current_main,
-                    current_main_altered,
-                    new_main,
-                    current_suffix,
-                    new_suffix,
-                )
-            )
-
-        return packages_restructured
+        return self.package_info(
+            package_name,
+            package_base,
+            package_upstream_url_overview,
+            current_version,
+            current_version_altered,
+            new_version,
+            new_version_altered,
+            current_main,
+            current_main_altered,
+            new_main,
+            current_suffix,
+            new_suffix,
+        )
 
     def split_package_tag(self, tag: str) -> tuple[str, str]:
         """
@@ -222,20 +234,31 @@ class PackageHandler:
 
         return tag_part_main, tag_part_suffix
 
-    def get_package_changelog(self, package: namedtuple) -> Optional[List[Tuple[str, str, str, str, str]]]:
+    def get_package_changelog(
+        self, package_information: Dict
+    ) -> Tuple[PackageInfo, Optional[List[Tuple[str, str, str, str, str]]]]:
         """Generates a changelog for a specified package by analyzing intermediate, minor, and major releases
         between its current and new versions. It fetches and compares relevant metadata and tags from
         Arch Linux repositories, as well as upstream sources like GitHub, GitLab, and KDE GitLab.
 
-        :param package: A named tuple containing the package information, such as the package name,
-                        current version, new version, main version tags, and suffixes.
-        :type package: namedtuple
-        :return: A list of tuples containing changelog information for the package. Each tuple provides
-                details on each relevant change from intermediate, major, and minor versions, in the format:
-                (tag, date, version, description, change type).
+        :param package_information: A dictionary containing package data with at least the keys:
+                                    - 'raw_content': str
+                                    - 'package_name': str
+                                    - 'current_version': str
+                                    - 'new_version': str
+        :type package_information: Dict
+        :return: A tuple with:
+            1. The package information namedtuple.
+            2. An optional list of tuples containing changelog information for the package. Each tuple provides
+               details on each relevant change from intermediate, major, and minor versions, in the format:
+               (tag, date, version, description, change type).
         :rtype: Optional[List[Tuple[str, str, str, str, str]]]
         """
         package_changelog = []
+
+        package = self.split_package_information(package_information)
+
+        self.logger.info(f"[Info]: Base package of {package.package_name}: {package.package_base}")
 
         # To determine the exact arch package-adress we need the architecture and repository
         #                         repository  architecture
@@ -248,7 +271,7 @@ class PackageHandler:
         )
 
         if not arch_package_repository:
-            return None
+            return package, None
 
         # TODO: package_repository should not be an array anymore in the future
         arch_package_url = (
@@ -278,7 +301,7 @@ class PackageHandler:
 
         if not arch_package_tags:
             self.logger.error(f"[Error]: {package.package_name}: Couldn't find any arch package tags")
-            return None
+            return package, None
 
         # Try to get the content of the .nvchecker.toml file, if existing
         # This will be used instead of the package_upstream_url_overview since this mostly does not contain the
@@ -319,9 +342,9 @@ class PackageHandler:
                 package_changelog += package_changelog_temp
 
             if package_changelog:
-                return package_changelog
+                return package, package_changelog
             else:
-                return None
+                return package, None
         else:
             self.logger.info("[Info]: No intermediate tags found")
 
@@ -383,9 +406,9 @@ class PackageHandler:
                 package_changelog += package_changelog_temp
 
         if package_changelog:
-            return package_changelog
+            return package, package_changelog
         else:
-            return None
+            return package, None
 
     def handle_intermediate_tags(
         self,

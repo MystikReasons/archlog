@@ -25,19 +25,19 @@ def main():
         logger.info("No packages to upgrade")
         exit(1)
 
-    max_package_name_length = max(len(package.package_name) for package in packages_to_update)
-    max_package_current_version = max(len(package.current_version) for package in packages_to_update)
-    max_package_new_version = max(len(package.new_version) for package in packages_to_update)
+    max_package_name_length = max(len(package["package_name"]) for package in packages_to_update.values())
+    max_package_current_version = max(len(package["current_version"]) for package in packages_to_update.values())
+    max_package_new_version = max(len(package["new_version"]) for package in packages_to_update.values())
     max_package_count = len(str(len(packages_to_update)))
 
     logger.info(f"Upgradable packages ({len(packages_to_update)}):")
     logger.info("--------------------")
-    for index, package in enumerate(packages_to_update, start=1):
+    for index, package in packages_to_update.items():
         logger.info(
             f"[{str(index).ljust(max_package_count)}] "
-            f"{package.package_name.ljust(max_package_name_length)} "
-            f"{package.current_version.ljust(max_package_current_version)} -> "
-            f"{package.new_version.ljust(max_package_new_version)}"
+            f"{package['package_name'].ljust(max_package_name_length)} "
+            f"{package['current_version'].ljust(max_package_current_version)} -> "
+            f"{package['new_version'].ljust(max_package_new_version)}"
         )
     logger.info("--------------------")
 
@@ -55,7 +55,7 @@ def main():
             for index in chosen_packages.split(","):
                 index = index.strip()
                 if index.isdigit():
-                    index = int(index) - 1
+                    index = int(index)
                     if 0 <= index < len(packages_to_update):
                         selected_indices.append(index)
                 else:
@@ -63,19 +63,19 @@ def main():
                     break
 
             if selected_indices:
-                selected_packages = [packages_to_update[index] for index in selected_indices]
+                selected_packages = {index: packages_to_update[index] for index in selected_indices}
                 valid_input = True
             else:
                 logger.info("Invalid input. Please enter valid package indices.")
 
     if selected_packages and chosen_packages != "0":
         logger.info("Selected packages for changelog check:")
-        for package in selected_packages:
-            logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
+        for index, package in selected_packages.items():
+            logger.info(f"{package['package_name']} {package['current_version']} -> {package['new_version']}")
     logger.info("--------------------")
 
-    for package in selected_packages:
-        logger.info(f"{package.package_name} {package.current_version} -> {package.new_version}")
+    for index, package in selected_packages.items():
+        logger.info(f"{package['package_name']} {package['current_version']} -> {package['new_version']}")
         package_changelog = collect_changelog_data(package, package_handler, config_handler)
 
         if package_changelog:
@@ -84,7 +84,7 @@ def main():
                 logger.info(f"- {message}")
                 logger.info(f"\t{url}")
         else:
-            logger.info(f"[Info]: No changelog for package: {package.package_name} found.")
+            logger.info(f"[Info]: No changelog for package: {package['package_name']} found.")
 
         logger.info("--------------------------------")
 
