@@ -14,9 +14,12 @@ def collect_changelog_data(package_information, package_handler, config_handler)
     :type config_handler: ConfigHandler
 
     :return: List of tuples, each containing a package and its changelog.
-    :rtype: list[tuple[Package, Optional[list[tuple[str, str, str, str, str, str]]]]]
+    :rtype: Optional[Tuple[PackageInfo, Optional[List[Tuple[str, str, str, str, str]]]]]
     """
-    package, changelog = package_handler.get_package_changelog(package_information)
-    config_handler.write_changelog(package, changelog)
+    result = package_handler.get_package_changelog(package_information)
+    if result:
+        package, changelog = result
+        config_handler.write_changelog(package, changelog)
+        return changelog
 
-    return changelog
+    return None

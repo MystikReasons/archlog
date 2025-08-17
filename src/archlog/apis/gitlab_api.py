@@ -84,7 +84,7 @@ class GitLabAPI:
                 if status_code in self.retry_status_codes and attempt < max_attempts - 1:
                     wait = backoff_factor**attempt
                     self.logger.debug(
-                        f"GitLab API: [Retry {attempt + 1}/{max_attempts}] HTTP {status_code} - retrying in {wait}s"
+                        f"[Debug]: GitLab API: [Retry {attempt + 1}/{max_attempts}] HTTP {status_code} - retrying in {wait}s"
                     )
                     time.sleep(wait)
                     continue
@@ -98,7 +98,7 @@ class GitLabAPI:
                 if attempt < max_attempts - 1:
                     wait = backoff_factor**attempt
                     self.logger.debug(
-                        f"GitLab API: [Retry {attempt + 1}/{max_attempts}] RequestError - retrying in {wait}s"
+                        f"[Debug]: GitLab API: [Retry {attempt + 1}/{max_attempts}] RequestError - retrying in {wait}s"
                     )
                     time.sleep(wait)
                     continue

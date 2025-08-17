@@ -14,22 +14,23 @@ from archlog.apis.github_api import GitHubAPI
 from archlog.apis.archlinux_api import ArchLinuxAPI
 
 PackageInfo = namedtuple(
-            "PackageInfo",
-            [
-                "package_name",
-                "package_base",
-                "package_upstream_url_overview",
-                "current_version",
-                "current_version_altered",
-                "new_version",
-                "new_version_altered",
-                "current_main",
-                "current_main_altered",
-                "new_main",
-                "current_suffix",
-                "new_suffix",
-            ],
-        )
+    "PackageInfo",
+    [
+        "package_name",
+        "package_base",
+        "package_upstream_url_overview",
+        "current_version",
+        "current_version_altered",
+        "new_version",
+        "new_version_altered",
+        "current_main",
+        "current_main_altered",
+        "new_main",
+        "current_suffix",
+        "new_suffix",
+    ],
+)
+
 
 class PackageHandler:
     """Initializes an instance of the class with the necessary configuration and logger.
@@ -166,7 +167,7 @@ class PackageHandler:
 
         arch_package_overview_information = self.archlinux_api.get_package_overview_site_information(package_name)
 
-        if not all(arch_package_overview_information):
+        if not arch_package_overview_information or not all(arch_package_overview_information):
             self.logger.error(f"[Error]: Couldn't extract all required information from {package_name}.")
             return None
 
@@ -236,7 +237,7 @@ class PackageHandler:
 
     def get_package_changelog(
         self, package_information: Dict
-    ) -> Tuple[PackageInfo, Optional[List[Tuple[str, str, str, str, str]]]]:
+    ) -> Optional[Tuple[PackageInfo, Optional[List[Tuple[str, str, str, str, str]]]]]:
         """Generates a changelog for a specified package by analyzing intermediate, minor, and major releases
         between its current and new versions. It fetches and compares relevant metadata and tags from
         Arch Linux repositories, as well as upstream sources like GitHub, GitLab, and KDE GitLab.
@@ -252,13 +253,16 @@ class PackageHandler:
             2. An optional list of tuples containing changelog information for the package. Each tuple provides
                details on each relevant change from intermediate, major, and minor versions, in the format:
                (tag, date, version, description, change type).
-        :rtype: Optional[List[Tuple[str, str, str, str, str]]]
+        :rtype: Optional[Tuple[PackageInfo, Optional[List[Tuple[str, str, str, str, str]]]]]
         """
         package_changelog = []
 
         package = self.split_package_information(package_information)
 
-        self.logger.info(f"[Info]: Base package of {package.package_name}: {package.package_base}")
+        if package:
+            self.logger.info(f"[Info]: Base package of {package.package_name}: {package.package_base}")
+        else:
+            return None
 
         # To determine the exact arch package-adress we need the architecture and repository
         #                         repository  architecture
