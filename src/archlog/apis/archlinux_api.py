@@ -101,8 +101,10 @@ class ArchLinuxAPI:
         :rtype: Optional[Tuple[str, str, str]]
         """
         response = self.__get(package_name)
-        if response:
-            result = response.get("results", "")[0]
+
+        results = (response or {}).get("results") or []
+        if results:
+            result = results[0]
             return [result.get("url", ""), result.get("pkgbase"), result.get("pkgdesc", "")]
         else:
             return None

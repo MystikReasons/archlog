@@ -8,6 +8,8 @@
 
 ### Bug fixes
 
+- **ArchLinux API** Prevent errors when response or results is None/empty
+
 # 1.0.9 (2025-07-24)
 
 ### Features and enhancements
