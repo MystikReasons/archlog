@@ -1338,15 +1338,16 @@ class PackageHandler:
     ) -> List[Tuple[str, str, str, str, str]]:
         """ """
         kde_package_categories = [
-            "plasma",
-            "frameworks",
-            "utilities",
-            "libraries",
-            "system",
-            "graphics",
             "accessibility",
             "education",
+            "frameworks",
             "games",
+            "graphics",
+            "libraries",
+            "plasma",
+            "sdk",
+            "system",
+            "utilities",
         ]
 
         # KDE tags look like this: v6.1.3 while Arch uses it like this 1:6.1.3-1

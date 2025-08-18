@@ -6,6 +6,7 @@
 - **Changelog** Added base package in changelog output
 - **General** Improve the logic of getting each package changelog
 - **General** Refactoring
+- **Package Handler** Sort KDE package categories and add further category sdk
 
 ### Bug fixes
 
