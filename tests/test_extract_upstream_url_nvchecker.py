@@ -26,7 +26,7 @@ def test_extract_upstream_url_nvchecker_gitlab_archlinux(handler):
 
     parsed_content = tomllib.loads(nvchecker_content)
     assert (
-        handler.extract_upstream_url_nvchecker(parsed_content["archlinux-keyring"])
+        handler.extract_upstream_url_nvchecker(parsed_content, "archlinux-keyring")
         == "https://gitlab.archlinux.org/archlinux/archlinux-keyring"
     )
 
@@ -42,7 +42,7 @@ def test_extract_upstream_url_nvchecker_github_case_1(handler):
     """
 
     parsed_content = tomllib.loads(nvchecker_content)
-    assert handler.extract_upstream_url_nvchecker(parsed_content["docker"]) == "https://github.com/moby/moby"
+    assert handler.extract_upstream_url_nvchecker(parsed_content, "docker") == "https://github.com/moby/moby"
 
 
 def test_extract_upstream_url_nvchecker_github_case_2(handler):
@@ -57,4 +57,36 @@ def test_extract_upstream_url_nvchecker_github_case_2(handler):
     """
 
     parsed_content = tomllib.loads(nvchecker_content)
-    assert handler.extract_upstream_url_nvchecker(parsed_content["curl"]) == "https://github.com/curl/curl"
+    assert handler.extract_upstream_url_nvchecker(parsed_content, "curl") == "https://github.com/curl/curl"
+
+
+def test_extract_upstream_url_nvchecker_key_mismatch(handler):
+    nvchecker_content = r"""
+    [sqlite]
+    source = "regex"
+    regex = "Version (\\d+.\\d+.\\d+)"
+    url = "https://www.sqlite.org/index.html"
+    """
+
+    parsed_content = tomllib.loads(nvchecker_content)
+    assert handler.extract_upstream_url_nvchecker(parsed_content, "lib32-sqlite") == None
+
+
+def test_extract_upstream_url_nvchecker_multiple_sources(handler):
+    nvchecker_content = """
+    [archlinux-keyring]
+    source = "gitlab"
+    gitlab = "archlinux/archlinux-keyring"
+    host = "gitlab.archlinux.org"
+    use_max_tag = true
+    prefix = "v"
+    [docker]
+    source = "github"
+    github = "moby/moby"
+    prefix = "v"
+    use_max_tag = true
+    exclude_regex = ".*(rc|alpha|beta).*"
+    """
+
+    parsed_content = tomllib.loads(nvchecker_content)
+    assert handler.extract_upstream_url_nvchecker(parsed_content, "docker") == "https://github.com/moby/moby"
