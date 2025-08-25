@@ -7,6 +7,7 @@
 - **General** Improve the logic of getting each package changelog
 - **General** Refactoring
 - **Package Handler** Sort KDE package categories and add further category sdk
+- **GitHub API** Enable follow redirects and update retry logic to include 403 responses triggered by GitHub primary rate limits. Retry only when x-ratelimit-remaining=0 and x-ratelimit-reset headers are present
 
 ### Bug fixes
 

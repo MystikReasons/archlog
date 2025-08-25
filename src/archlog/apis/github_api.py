@@ -1,5 +1,6 @@
 import httpx
 import re
+import time
 from typing import Optional, Dict, List, Tuple
 
 
@@ -22,12 +23,14 @@ class GitHubAPI:
         self.client = httpx.Client(timeout=timeout, transport=httpx.HTTPTransport(retries=retries))
 
         # Retry HTTP responses with these status codes:
+        # 403: Forbidden – typically indicates GitHub primary rate limit exceeded (x-ratelimit-remaining=0),
+        #      only retried if rate-limit headers are present
         # 429: Too Many Requests - rate-limiting from the server
         # 500: Internal Server Error - generic unexpected server failure
         # 502: Bad Gateway - received an invalid response from upstream
         # 503: Service Unavailable - server is temporarily overloaded or under maintenance
         # 504: Gateway Timeout - server did not receive a timely response from upstream
-        self.retry_status_codes = {429, 500, 502, 503, 504}
+        self.retry_status_codes = {403, 429, 500, 502, 503, 504}
 
     def __get(
         self,
@@ -37,16 +40,20 @@ class GitHubAPI:
     ) -> Optional[List[Dict]]:
         """Sends a GET request to the GitHub REST API with retry logic for certain HTTP status codes.
 
-        If a retryable HTTP status code is returned (e.g., 429, 500, 503, see GitHubAPI.retry_status_codes), the method
-        retries the request up to `max_attempts` times. Between attempts, it waits for
-        an exponentially increasing delay calculated as:
+        If a retryable HTTP status code is returned (e.g., 429, 500, 502, 503, 504, see GitHubAPI.retry_status_codes),
+        the method retries the request up to `max_attempts` times. The delay between attempts is determined as follows:
 
-            wait = backoff_factor ** (attempt_number - 1)
+            1. If the `retry-after` header is present, wait for the specified number of seconds.
+            2. If `x-ratelimit-remaining` is 0 and `x-ratelimit-reset` is present, wait until the reset time (UTC epoch seconds).
+            3. Otherwise, fall back to exponential backoff:
 
-        For example, with a `backoff_factor` of 2, wait times between retries would be:
-        1s (immediately after first failure), 2s, 4s, 8s, etc.
+                wait = backoff_factor ** attempt_number
 
-        :param endpoint: API endpoint, e.g. 'repos/account/repository/tags', 'repos/account/repository/compare/tag_from...tag_to'
+        For example, with a `backoff_factor` of 2, wait times would be:
+        1s (first retry), 2s, 4s, 8s, etc.
+
+        :param endpoint: API endpoint, e.g. 'repos/account/repository/tags',
+                        'repos/account/repository/compare/tag_from...tag_to'
         :type endpoint: str
         :param max_attempts: Total number of attempts before giving up (including the first try).
         :type max_attempts: int
@@ -61,18 +68,37 @@ class GitHubAPI:
 
         for attempt in range(max_attempts):
             try:
-                response = self.client.get(url)
+                response = self.client.get(url, follow_redirects=True)
                 response.raise_for_status()
                 return response.json()
 
             except httpx.HTTPStatusError as ex:  # handles 4xx/5xx errors after raise_for_status()
                 status_code = ex.response.status_code
+                headers = ex.response.headers
 
                 if status_code in self.retry_status_codes and attempt < max_attempts - 1:
-                    wait = backoff_factor**attempt
-                    self.logger.debug(
-                        f"GitHub API: [Retry {attempt + 1}/{max_attempts}] HTTP {status_code} - retrying in {wait}s"
-                    )
+                    wait = None
+
+                    if "retry-after" in headers:
+                        wait = int(headers["retry-after"])
+                        self.logger.info(
+                            f"[Info] GitHub API: retry-after header found → waiting {wait}s"
+                        )
+                    elif status_code == 403 and headers.get("x-ratelimit-remaining") == "0":
+                        reset_time = int(headers.get("x-ratelimit-reset", "0"))
+                        now = int(time.time())
+                        wait = max(0, reset_time - now)
+                        self.logger.info(
+                            f"[Info] GitHub API: primary rate limit reached (403) → waiting {wait}s until reset"
+                        )
+
+                    # Fallback: exponential backoff
+                    if wait is None:
+                        wait = backoff_factor**attempt
+                        self.logger.info(
+                            f"[Info] GitHub API: no retry-after or reset header → backoff {wait}s"
+                        )
+
                     time.sleep(wait)
                     continue
                 else:
