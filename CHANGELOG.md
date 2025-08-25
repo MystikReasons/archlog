@@ -8,6 +8,7 @@
 - **General** Refactoring
 - **Package Handler** Sort KDE package categories and add further category sdk
 - **GitHub API** Enable follow redirects and update retry logic to include 403 responses triggered by GitHub primary rate limits. Retry only when x-ratelimit-remaining=0 and x-ratelimit-reset headers are present
+- **GitHub API** Add page_size parameter to __get for pagination control. Changed default page size of get_package_tags to 100
 
 ### Bug fixes
 

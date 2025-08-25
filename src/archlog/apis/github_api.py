@@ -33,10 +33,7 @@ class GitHubAPI:
         self.retry_status_codes = {403, 429, 500, 502, 503, 504}
 
     def __get(
-        self,
-        endpoint: str,
-        max_attempts: int = 3,
-        backoff_factor: int = 2,
+        self, endpoint: str, max_attempts: int = 3, backoff_factor: int = 2, page_size: int = 30
     ) -> Optional[List[Dict]]:
         """Sends a GET request to the GitHub REST API with retry logic for certain HTTP status codes.
 
@@ -55,10 +52,12 @@ class GitHubAPI:
         :param endpoint: API endpoint, e.g. 'repos/account/repository/tags',
                         'repos/account/repository/compare/tag_from...tag_to'
         :type endpoint: str
-        :param max_attempts: Total number of attempts before giving up (including the first try).
-        :type max_attempts: int
-        :param backoff_factor: Used for exponential backoff delay (in seconds).
-        :type backoff_factor: int
+        :param max_attempts: Total number of attempts before giving up (including the first try). Default: 3
+        :type max_attempts: int, optional
+        :param backoff_factor: Used for exponential backoff delay in seconds (default: 2).
+        :type backoff_factor: int, optional
+        :param page_size: Number of items to request per page (default: 30, max: 100).
+        :type page_size: int, optional
 
         :return: Parsed JSON response if successful, otherwise None
         :rtype: Optional[List[Dict]
@@ -68,7 +67,7 @@ class GitHubAPI:
 
         for attempt in range(max_attempts):
             try:
-                response = self.client.get(url, follow_redirects=True)
+                response = self.client.get(url, params={"per_page": page_size}, follow_redirects=True)
                 response.raise_for_status()
                 return response.json()
 
@@ -81,9 +80,7 @@ class GitHubAPI:
 
                     if "retry-after" in headers:
                         wait = int(headers["retry-after"])
-                        self.logger.info(
-                            f"[Info] GitHub API: retry-after header found → waiting {wait}s"
-                        )
+                        self.logger.info(f"[Info] GitHub API: retry-after header found → waiting {wait}s")
                     elif status_code == 403 and headers.get("x-ratelimit-remaining") == "0":
                         reset_time = int(headers.get("x-ratelimit-reset", "0"))
                         now = int(time.time())
@@ -95,9 +92,7 @@ class GitHubAPI:
                     # Fallback: exponential backoff
                     if wait is None:
                         wait = backoff_factor**attempt
-                        self.logger.info(
-                            f"[Info] GitHub API: no retry-after or reset header → backoff {wait}s"
-                        )
+                        self.logger.info(f"[Info] GitHub API: no retry-after or reset header → backoff {wait}s")
 
                     time.sleep(wait)
                     continue
@@ -170,7 +165,7 @@ class GitHubAPI:
         """
         endpoint = f"repos/{account_name}/{package_name}/tags"
 
-        response = self.__get(endpoint)
+        response = self.__get(endpoint, page_size=100)
         if response:
             return [tag.get("name", "") for tag in response]
         else:
