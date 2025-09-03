@@ -18,6 +18,7 @@
 - **ArchLinux API** Prevent errors when response or results is None/empty
 - **Logger** Change logger level back to WARNING
 - **Package Handler** Harden extract_upstream_url_nvchecker against missing package keys
+- **Config Handler** Preserve default config key order when merging user config
 
 # 1.0.9 (2025-07-24)
 

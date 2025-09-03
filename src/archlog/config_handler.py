@@ -97,13 +97,22 @@ class ConfigHandler:
         :return: True if any values were added or changed
         """
         updated = False
+        new_user_config = {}
+
         for key, value in default_config.items():
-            if key not in user_config:
-                user_config[key] = deepcopy(value)
+            if key in user_config:
+                # Key exists -> keep it, merge recursively if both are dicts
+                if isinstance(value, dict) and isinstance(user_config[key], dict):
+                    if self.merge_config(value, user_config[key]):
+                        updated = True
+                new_user_config[key] = user_config[key]
+            else:
+                # Key is missing -> insert at the position of default_config
+                new_user_config[key] = deepcopy(value)
                 updated = True
-            elif isinstance(value, dict) and isinstance(user_config[key], dict):
-                if self.merge_config(value, user_config[key]):
-                    updated = True
+
+        user_config.clear()
+        user_config.update(new_user_config)
 
         return updated
 
