@@ -1,6 +1,7 @@
 {
     "architecture-wording": "Architecture",
     "webscraper-delay": 3000,
+    "github-personal-access-token": "",
     "arch-repositories": [
         {"name": "extra", "enabled": true},
         {"name": "core", "enabled": true},

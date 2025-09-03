@@ -11,6 +11,7 @@
 - **GitHub API** Add page_size parameter to __get for pagination control. Changed default page size of get_package_tags to 100
 - **Package Handler** Refactor get_arch_package_compare_information and better handle source URL's from .SRCINFO when no nvchecker.toml file is available
 - **Config** Change default language of architecture-wording to english
+- **Config** Add new field "github-personal-access-token" for later use
 
 ### Bug fixes
 
