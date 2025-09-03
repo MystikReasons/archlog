@@ -10,6 +10,7 @@
 - **GitHub API** Enable follow redirects and update retry logic to include 403 responses triggered by GitHub primary rate limits. Retry only when x-ratelimit-remaining=0 and x-ratelimit-reset headers are present
 - **GitHub API** Add page_size parameter to __get for pagination control. Changed default page size of get_package_tags to 100
 - **Package Handler** Refactor get_arch_package_compare_information and better handle source URL's from .SRCINFO when no nvchecker.toml file is available
+- **Config** Change default language of architecture-wording to english
 
 ### Bug fixes
 

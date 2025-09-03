@@ -1,5 +1,5 @@
 {
-    "architecture-wording": "Architektur",
+    "architecture-wording": "Architecture",
     "webscraper-delay": 3000,
     "arch-repositories": [
         {"name": "extra", "enabled": true},
