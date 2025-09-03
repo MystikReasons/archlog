@@ -653,28 +653,26 @@ class PackageHandler:
                 self.gitlab_api.base_urls["Arch"], "archlinux/packaging/packages/" + package_name, tag_from, tag_to
             )
 
-            if srcinfo_content:
-                source_urls_old = []
-                source_urls_new = []
-                url_pattern = re.compile(r"(https?://|git\+)", re.IGNORECASE)
-
-                for index, (diff) in enumerate(srcinfo_content):
-                    if diff["new_path"] == ".SRCINFO" and diff["old_path"] == ".SRCINFO":
-                        self.logger.debug(
-                            f"[Debug]: Changes found for .SRCINFO for package {package_name}: {diff['diff']}"
-                        )
-
-                        for line in diff["diff"].splitlines():
-                            if "source =" in line and url_pattern.search(line):
-                                if line.startswith("+") and not line.startswith("+++"):
-                                    source_urls_new.append(line)
-                                elif line.startswith("-") and not line.startswith("---"):
-                                    source_urls_old.append(line)
-            else:
+            if not srcinfo_content:
                 self.logger.debug(
                     f"[Debug]: No response received from {package_name} regarding diff from current to new tag"
                 )
                 return None
+
+            source_urls_old = []
+            source_urls_new = []
+            url_pattern = re.compile(r"(https?://|git\+)", re.IGNORECASE)
+
+            for diff in srcinfo_content:
+                if diff["new_path"] == ".SRCINFO" and diff["old_path"] == ".SRCINFO":
+                    self.logger.debug(f"[Debug]: Changes found for .SRCINFO for package {package_name}: {diff['diff']}")
+
+                    for line in diff["diff"].splitlines():
+                        if "source =" in line and url_pattern.search(line):
+                            if line.startswith("+") and not line.startswith("+++"):
+                                source_urls_new.append(line)
+                            elif line.startswith("-") and not line.startswith("---"):
+                                source_urls_old.append(line)
 
             if not source_urls_old or not source_urls_new:
                 self.logger.debug(
@@ -685,101 +683,99 @@ class PackageHandler:
             max_length = max(len(source_urls_old), len(source_urls_new))
 
             for i in range(max_length):
-                old_url = source_urls_old[i] if i < len(source_urls_old) else None
-                new_url = source_urls_new[i] if i < len(source_urls_new) else None
-
-                # 'old_url' or `new_url` could extract something like this:
+                # 'url_old' or `url_new` could extract something like this:
                 # https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
                 # We only need this segment: https://gitlab.freedesktop.org/pipewire/
-                if old_url and new_url:
-                    self.logger.debug(f"[Debug]: Source URL raw old: {old_url}")
-                    self.logger.debug(f"[Debug]: Source URL raw new: {new_url}")
+                url_old = source_urls_old[i] if i < len(source_urls_old) else None
+                url_new = source_urls_new[i] if i < len(source_urls_new) else None
 
-                    # Handle URL's
-                    #
-                    if ".git" in old_url or ".git" in new_url:
-                        # The URL could look like this:
-                        # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
-                        # We only want to extract: https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git
-                        match_url_old = re.search(r"https://.*?\.git", old_url)
-                        match_url_new = re.search(r"https://.*?\.git", new_url)
-                    elif "github" in old_url or "github" in new_url:
-                        # The URL could look like this:
-                        # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
-                        # https://github.com/abseil/abseil-cpp/archive/20250127.0/abseil-cpp-20250127.0.tar.gz
-                        # We only want to extract: https://github.com/abseil/abseil-cpp/
-                        match_url_old = re.search(r"https://github\.com/[^/]+/[^/?]+", old_url)
-                        match_url_new = re.search(r"https://github\.com/[^/]+/[^/?]+", new_url)
-                    else:
-                        match_url_old = re.search(r"https://.*?(?=#|$)", old_url)
-                        match_url_new = re.search(r"https://.*?(?=#|$)", new_url)
+                if not url_old or not url_new:
+                    self.logger.debug(f"[Debug]: Couldn't extract either url_old or url_new")
+                    continue
 
-                    # Handle tags
-                    #
-                    if ("gitlab" in old_url or "git." in old_url) or ("gitlab" in new_url or "git." in new_url):
-                        # The URL could look like this:
-                        # https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
-                        # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
-                        # We only need this segment: "1.2.3"
-                        match_tag_old = re.search(r"#tag=([^\?]+)", old_url)
-                        match_tag_new = re.search(r"#tag=([^\?]+)", new_url)
-                    elif "github" in old_url or "github" in new_url:
-                        # The URL could look like this:
-                        # https://github.com/docker/cli.git#tag=v28.0.1
-                        # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
-                        match_tag_old = re.search(r"#tag=([^\?]+)", old_url)
-                        match_tag_new = re.search(r"#tag=([^\?]+)", new_url)
+                self.logger.debug(f"[Debug]: Source URL raw old: {url_old}")
+                self.logger.debug(f"[Debug]: Source URL raw new: {url_new}")
 
-                        # or:
-                        # https://github.com/libusb/libusb/releases/download/v1.0.28/...
-                        # https://github.com/abseil/abseil-cpp/archive/20250127.0/...
-                        if not match_tag_old:
-                            match_tag_old = re.search(r"/(?:download|archive)/([^/]+)", old_url)
-
-                        if not match_tag_new:
-                            match_tag_new = re.search(r"/(?:download|archive)/([^/]+)", new_url)
-                    else:
-                        match_tag_old = None
-                        match_tag_new = None
-
-                    if match_url_old:
-                        self.logger.debug(f"[Debug]: Source URL old: {match_url_old.group(0)}")
-                    else:
-                        self.logger.debug("[Debug]: Source URL old: None")
-                    if match_url_new:
-                        self.logger.debug(f"[Debug]: Source URL new: {match_url_new.group(0)}")
-                    else:
-                        self.logger.debug("[Debug]: Source URL new: None")
-                    if match_tag_old:
-                        self.logger.debug(f"[Debug]: Source tag old: {match_tag_old.group(1)}")
-                    else:
-                        self.logger.debug("[Debug]: Source tag old: None")
-                    if match_tag_new:
-                        self.logger.debug(f"[Debug]: Source tag new: {match_tag_new.group(1)}")
-                    else:
-                        self.logger.debug("[Debug]: Source tag new: None")
-
-                    if match_url_old is not None and match_url_new is not None:
-                        similarity = SequenceMatcher(None, match_url_old.group(0), match_url_new.group(0)).ratio()
-                    else:
-                        similarity = 0.0
-
-                    # Both URL's are similar
-                    if similarity >= 0.8:
-                        return {
-                            "new_source_url": (match_url_new.group(0) if match_url_new else None),
-                            "old_source_url": (match_url_old.group(0) if match_url_old else None),
-                            "new_source_tag": (match_tag_new.group(1) if match_tag_new else None),
-                            "old_source_tag": (match_tag_old.group(1) if match_tag_old else None),
-                        }
-                    else:
-                        return None
+                # Handle URL's
+                #
+                if "gitlab" in url_old or "gitlab" in url_new:
+                    # The URL could look like this:
+                    # +\tsource = git+https://gitlab.winehq.org/wine/wine.git?signed#tag=wine-10.13
+                    # We only want to extract: https://gitlab.winehq.org/wine/wine
+                    url_regex = r"(https://gitlab(?:\.[^/]+)?\.(?:org|com)/[^/]+/[^/]+?)(?:\.git)?(?:[?#]|$)"
+                elif "github" in url_old or "github" in url_new:
+                    # The URL could look like this:
+                    # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
+                    # https://github.com/abseil/abseil-cpp/archive/20250127.0/abseil-cpp-20250127.0.tar.gz
+                    # We only want to extract: https://github.com/abseil/abseil-cpp/
+                    url_regex = r"(https://github\.com/[^/]+/[^/?]+)"
+                elif ".git" in url_old or ".git" in url_new:
+                    # The URL could look like this:
+                    # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
+                    # We only want to extract: https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git
+                    url_regex = r"(https://.*?\.git)"
                 else:
-                    self.logger.debug(f"[Debug]: Couldn't extract either old_url or new_url")
-                    return None
-            else:
-                self.logger.error(f"[Error]: Couldn't find 'source =' in {url}")
-                return None
+                    # Fallback
+                    url_regex = r"(https://.*?)(?=#|$)"
+
+                match_url_old = re.search(url_regex, url_old)
+                match_url_new = re.search(url_regex, url_new)
+
+                repo_url_old = match_url_old.group(1) if match_url_old else None
+                repo_url_new = match_url_new.group(1) if match_url_new else None
+
+                # Handle tags
+                #
+                if ("gitlab" in url_old or "git." in url_old) or ("gitlab" in url_new or "git." in url_new):
+                    # The URL could look like this:
+                    # https://gitlab.freedesktop.org/pipewire/pipewire.git#tag=1.2.3
+                    # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
+                    # https://github.com/docker/cli.git#tag=v28.0.1
+                    # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
+                    # We only need this segment: "1.2.3"
+                    tag_regex_list = [r"#tag=([^?]+)"]
+                elif "github" in url_old or "github" in url_new:
+                    # https://github.com/libusb/libusb/releases/download/v1.0.28/...
+                    # https://github.com/abseil/abseil-cpp/archive/20250127.0/...
+                    tag_regex_list = [r"#tag=([^?]+)", r"/(?:download|archive)/([^/]+)"]
+                else:
+                    tag_regex_list = []
+
+                match_tag_old = None
+                for regex in tag_regex_list:
+                    match_tag_old = re.search(regex, url_old)
+                    if match_tag_old:
+                        break
+
+                match_tag_new = None
+                for regex in tag_regex_list:
+                    match_tag_new = re.search(regex, url_new)
+                    if match_tag_new:
+                        break
+
+                repo_tag_old = match_tag_old.group(1) if match_tag_old else None
+                repo_tag_new = match_tag_new.group(1) if match_tag_new else None
+
+                self.logger.debug(f"[Debug]: Source URL old: {repo_url_old}")
+                self.logger.debug(f"[Debug]: Source URL new: {repo_url_new}")
+                self.logger.debug(f"[Debug]: Source tag old: {repo_tag_old}")
+                self.logger.debug(f"[Debug]: Source tag new: {repo_tag_new}")
+
+                if repo_url_old and repo_url_new:
+                    similarity = SequenceMatcher(None, repo_url_old, repo_url_new).ratio()
+                else:
+                    similarity = 0.0
+
+                # Both URL's are similar
+                if similarity >= 0.8:
+                    return {
+                        "new_source_url": (repo_url_new if repo_url_new else None),
+                        "old_source_url": (repo_url_old if repo_url_old else None),
+                        "new_source_tag": (repo_tag_new if repo_tag_new else None),
+                        "old_source_tag": (repo_tag_old if repo_tag_old else None),
+                    }
+
+            return None
 
         except Exception as ex:
             self.logger.error(f"[Error]: Unexpected error while processing the package {package_name}: {ex}")
@@ -1147,7 +1143,18 @@ class PackageHandler:
 
                     upstream_package_tags = self.gitlab_api.get_package_tags(base_url, project_full_path)
                 else:
-                    upstream_package_tags = None
+                    upstream_url_information = self.gitlab_api.extract_upstream_url_information(source)
+                    if upstream_url_information:
+                        subdomain = upstream_url_information[0]
+                        tld = upstream_url_information[1]
+                        project_path = upstream_url_information[2]
+
+                        base_url = f"https://gitlab.{subdomain}.{tld}/api/v4/projects"
+                        project_full_path = f"{project_path}/{package_name}"
+
+                        upstream_package_tags = self.gitlab_api.get_package_tags(base_url, project_full_path)
+                    else:
+                        upstream_package_tags = None
             elif "invent.kde" in source:
                 if project_path:
                     base_url = f"https://invent.kde.org/api/v4/projects"
@@ -1178,18 +1185,19 @@ class PackageHandler:
                             f"[Debug]: No similar tag for {current_tag} found in the upstream package repository"
                         )
 
-                if new_tag or override_shown_new_tag not in upstream_package_tags:
-                    new_tag_to_check = override_shown_new_tag or new_tag
-                    closest_match_new_tag = self.get_closest_package_tag(new_tag_to_check, upstream_package_tags)
+                if new_tag not in upstream_package_tags:
+                    if override_shown_new_tag not in upstream_package_tags:
+                        new_tag_to_check = override_shown_new_tag or new_tag
+                        closest_match_new_tag = self.get_closest_package_tag(new_tag_to_check, upstream_package_tags)
 
-                    if closest_match_new_tag:
-                        self.logger.debug(
-                            f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag}"
-                        )
-                    else:
-                        self.logger.debug(
-                            f"[Debug]: No similar tag for {new_tag_to_check} found in the upstream package repository"
-                        )
+                        if closest_match_new_tag:
+                            self.logger.debug(
+                                f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag}"
+                            )
+                        else:
+                            self.logger.debug(
+                                f"[Debug]: No similar tag for {new_tag_to_check} found in the upstream package repository"
+                            )
             else:
                 self.logger.debug(f"[Debug]: No upstream package tags found for {source}")
 
@@ -1241,9 +1249,9 @@ class PackageHandler:
                 )
             else:
                 if project_path:
-                    subdomain = f"{package_repository}." if package_repository else ""
-                    base_url = f"https://gitlab.{subdomain}{tld}/api/v4/projects"
-                    project_full_path = f"{project_path}/{package_name}"
+                    subdomain = subdomain or (f"{package_repository}." if package_repository else "")
+                    base_url = base_url or f"https://gitlab.{subdomain}{tld}/api/v4/projects"
+                    project_full_path = project_full_path or f"{project_path}/{package_name}"
 
                     commits = self.gitlab_api.get_commits_between_tags(
                         base_url,
