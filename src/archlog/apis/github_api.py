@@ -143,7 +143,7 @@ class GitHubAPI:
         """
         endpoint = f"repos/{account_name}/{package_name}/compare/{tag_from}...{tag_to}"
 
-        response = self.__get(endpoint)
+        response = self.__get(endpoint, page_size=100)
         if response:
             return [
                 (

@@ -13,6 +13,7 @@
 - **Config** Change default language of architecture-wording to english
 - **Config** Add new field "github-personal-access-token" for later use
 - **General** Refactor some log messages
+- **GitHub API** Increase page size for getting commits from 30 to 100
 
 ### Bug fixes
 
