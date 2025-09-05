@@ -60,7 +60,7 @@ class ConfigHandler:
         :rtype: Dict[str, Any]
         """
         if not self.config_path.exists():
-            self.logger.debug(f"[Debug]: Config file not found → creating default: {self.config_path}")
+            self.logger.debug(f"[Debug]: Config file not found -> creating default: {self.config_path}")
             with open(self.config_path, "w", encoding="utf-8") as write_config_file:
                 json.dump(self.default_config, write_config_file, indent=2)
 

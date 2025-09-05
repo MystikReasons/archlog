@@ -80,19 +80,25 @@ class GitHubAPI:
 
                     if "retry-after" in headers:
                         wait = int(headers["retry-after"])
-                        self.logger.info(f"[Info] GitHub API: retry-after header found → waiting {wait}s")
+                        self.logger.info(f"[Info] GitHub API: retry-after header found -> waiting {wait}s")
                     elif status_code == 403 and headers.get("x-ratelimit-remaining") == "0":
                         reset_time = int(headers.get("x-ratelimit-reset", "0"))
                         now = int(time.time())
                         wait = max(0, reset_time - now)
+                        self.logger.info("[Info] GitHub API:")
+                        self.logger.info(f"primary rate limit reached (403) -> waiting {wait}s until reset")
                         self.logger.info(
-                            f"[Info] GitHub API: primary rate limit reached (403) → waiting {wait}s until reset"
+                            "Note: You can avoid this wait by using a Personal Access Token (GITHUB_TOKEN),"
                         )
+                        self.logger.info(
+                            "which raises the limit to 5000 requests per hour instead of 60 requests per hour"
+                        )
+                        self.logger.info("Note: This feature is not yet released")
 
                     # Fallback: exponential backoff
                     if wait is None:
                         wait = backoff_factor**attempt
-                        self.logger.info(f"[Info] GitHub API: no retry-after or reset header → backoff {wait}s")
+                        self.logger.info(f"[Info] GitHub API: no retry-after or reset header -> backoff {wait}s")
 
                     time.sleep(wait)
                     continue

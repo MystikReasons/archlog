@@ -1520,10 +1520,10 @@ class PackageHandler:
 
         This function handles different source types:
 
-        - Direct URL (`url` key) → returned as-is
-        - Git (`git` key) → `.git` suffix is removed if present
-        - GitHub (`github` key) → returns `https://github.com/<repo>`
-        - GitLab (`gitlab` key) → returns `https://<host>/<repo>`, default host is `gitlab.com`
+        - Direct URL -> returned as-is
+        - Git -> .git suffix is removed if present
+        - GitHub -> returns "https://github.com/<repo>"
+        - GitLab -> returns "https://<host>/<repo>", default host is gitlab.com
 
         If the specified package key is not found in the parsed content, the function logs a debug message and returns None.
 
