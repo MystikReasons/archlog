@@ -1,4 +1,4 @@
-# 1.1 ()
+# 1.1 (2025-09-09)
 
 ### Features and enhancements
 
@@ -14,6 +14,7 @@
 - **Config** Add new field "github-personal-access-token" for later use
 - **General** Refactor some log messages
 - **GitHub API** Increase page size for getting commits from 30 to 100
+- **GitHub API** Add pagination support
 
 ### Bug fixes
 

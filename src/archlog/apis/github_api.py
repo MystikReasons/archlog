@@ -15,6 +15,7 @@ class GitHubAPI:
     """
 
     BASE_URL = "https://api.github.com"
+    LINK_REL = re.compile(r'<([^>]+)>;\s*rel="([^"]+)"')
 
     def __init__(self, logger, retries: int = 3, timeout: float = 10) -> None:
         """Constructor method"""
@@ -35,41 +36,102 @@ class GitHubAPI:
     def __get(
         self, endpoint: str, max_attempts: int = 3, backoff_factor: int = 2, page_size: int = 30
     ) -> Optional[List[Dict]]:
-        """Sends a GET request to the GitHub REST API with retry logic for certain HTTP status codes.
+        """Fetch all pages from the GitHub REST API using the existing retry logic.
 
-        If a retryable HTTP status code is returned (e.g., 429, 500, 502, 503, 504, see GitHubAPI.retry_status_codes),
-        the method retries the request up to `max_attempts` times. The delay between attempts is determined as follows:
-
-            1. If the `retry-after` header is present, wait for the specified number of seconds.
-            2. If `x-ratelimit-remaining` is 0 and `x-ratelimit-reset` is present, wait until the reset time (UTC epoch seconds).
-            3. Otherwise, fall back to exponential backoff:
-
-                wait = backoff_factor ** attempt_number
-
-        For example, with a `backoff_factor` of 2, wait times would be:
-        1s (first retry), 2s, 4s, 8s, etc.
+        This method automatically handles pagination via the Link header. It also includes
+        a fallback mechanism in case the Link header is missing, by checking if the
+        returned data size is smaller than the requested page size.
 
         :param endpoint: API endpoint, e.g. 'repos/account/repository/tags',
                         'repos/account/repository/compare/tag_from...tag_to'
         :type endpoint: str
         :param max_attempts: Total number of attempts before giving up (including the first try). Default: 3
         :type max_attempts: int, optional
-        :param backoff_factor: Used for exponential backoff delay in seconds (default: 2).
+        :param backoff_factor: Exponential backoff delay in seconds (default: 2).
         :type backoff_factor: int, optional
         :param page_size: Number of items to request per page (default: 30, max: 100).
         :type page_size: int, optional
 
         :return: Parsed JSON response if successful, otherwise None
-        :rtype: Optional[List[Dict]
+        :rtype: Optional[List[Dict]]
         """
         url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
-        self.logger.debug(f"GitHub API URL: {url}")
+        results = []
+        params = {"per_page": page_size}
+        page_number = 1
 
+        while url:
+            self.logger.debug(f"[Debug] Fetching page {page_number}: {url}")
+            data, headers = self.__get_single_page(url, params, max_attempts, backoff_factor)
+
+            if not data:
+                self.logger.error(f"[Error] Failed to fetch page {page_number}. Aborting pagination.")
+                return None
+
+            # list - when the API returns package tags
+            # dict - when the API returns package commits
+            if isinstance(data, list):
+                results.extend(data)
+            else:
+                results.append(data)
+
+            self.logger.debug(
+                f"[Debug] Page {page_number} fetched, {len(data)} items returned, total so far: {len(results)}"
+            )
+
+            # Check the Link header for the next page
+            link_header = headers.get("Link")
+            next_url = None
+            if link_header:
+                self.logger.debug(f"[Debug] Link header: {link_header}")
+                for match in self.LINK_REL.finditer(link_header):
+                    link_url, rel = match.groups()
+                    if rel == "next":
+                        next_url = link_url
+                        break
+
+            # Fallback: if no Link header and page is smaller than page_size -> end reached
+            if next_url is None and len(data) < page_size:
+                self.logger.debug(f"[Debug] Last page reached (less than {page_size} items).")
+                break
+
+            url = next_url
+            params = None  # For page 2+ already in URL
+            page_number += 1
+
+        return results
+
+    def __get_single_page(self, url: str, params: Dict, max_attempts: int, backoff_factor: int):
+        """Fetch a single page from GitHub with retry logic for rate limits and transient errors.
+
+        If a retryable HTTP status code is returned (e.g., 429, 500, 502, 503, 504, see GitHubAPI.retry_status_codes),
+        the method retries the request up to 'max_attempts' times. The delay between attempts is determined as follows:
+
+            1. If the 'retry-after' header is present, wait for the specified number of seconds.
+            2. If 'x-ratelimit-remaining' is 0 and 'x-ratelimit-reset' is present, wait until the reset time.
+            3. Otherwise, fall back to exponential backoff:
+
+                wait = backoff_factor ** attempt_number
+
+        For example, with a 'backoff_factor' of 2, wait times would be:
+        1s (first retry), 2s, 4s, 8s, etc.
+
+        :param url: The API URL to request
+        :type url: str
+        :param params: Query parameters (e.g., per_page)
+        :type params: dict or None
+        :param max_attempts: Total number of attempts before giving up (including the first try).
+        :type max_attempts: int
+        :param backoff_factor: Exponential backoff delay in seconds.
+        :type backoff_factor: int
+        :return: Tuple of (JSON data, response headers) or (None, {}) on failure
+        :rtype: Tuple[List, Dict]
+        """
         for attempt in range(max_attempts):
             try:
-                response = self.client.get(url, params={"per_page": page_size}, follow_redirects=True)
-                response.raise_for_status()
-                return response.json()
+                response = self.client.get(url, params=params, follow_redirects=True)
+                header = response.headers
+                return response.json(), response.headers
 
             except httpx.HTTPStatusError as ex:  # handles 4xx/5xx errors after raise_for_status()
                 status_code = ex.response.status_code
@@ -104,7 +166,7 @@ class GitHubAPI:
                     continue
                 else:
                     self.logger.error(f"[Error]: GitHub API HTTP error {status_code}: {ex}")
-                    return None
+                    return None, {}
 
             except httpx.RequestError as ex:
                 self.logger.error(f"[Error]: GitHub API request error: {ex}")
@@ -117,10 +179,10 @@ class GitHubAPI:
                     time.sleep(wait)
                     continue
                 else:
-                    return None
+                    return None, {}
 
         self.logger.error(f"[Error]: GitHub API: All retries failed.")
-        return None
+        return None, {}
 
     def get_commits_between_tags(
         self, account_name: str, package_name: str, tag_from: str, tag_to: str
@@ -144,15 +206,19 @@ class GitHubAPI:
         endpoint = f"repos/{account_name}/{package_name}/compare/{tag_from}...{tag_to}"
 
         response = self.__get(endpoint, page_size=100)
+        all_commits = []
         if response:
-            return [
-                (
-                    commit.get("commit", {}).get("message", ""),
-                    commit.get("commit", {}).get("author", {}).get("date", ""),
-                    commit.get("html_url", ""),
-                )
-                for commit in response.get("commits", [])
-            ]
+            for page in response:
+                commits = page.get("commits", [])
+                for commit in commits:
+                    all_commits.append(
+                        (
+                            commit.get("commit", {}).get("message", ""),
+                            commit.get("commit", {}).get("author", {}).get("date", ""),
+                            commit.get("html_url", ""),
+                        )
+                    )
+            return all_commits
         else:
             return None
 
