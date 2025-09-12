@@ -1,3 +1,11 @@
+# 1.2 ()
+
+### Features and enhancements
+
+- **Changelog** Display package description in the changelog file for each package
+
+### Bug fixes
+
 # 1.1 (2025-09-09)
 
 ### Features and enhancements

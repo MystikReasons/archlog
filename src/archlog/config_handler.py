@@ -149,6 +149,7 @@ class ConfigHandler:
 
         if package.package_name not in existing_data["changelog"]:
             existing_data["changelog"][package.package_name] = {
+                "description": package.package_description,
                 "base package": package.package_base if package.package_base else "-",
                 "current version": package.current_version,
                 "new version": package.new_version,
@@ -243,6 +244,6 @@ class ConfigHandler:
                 }
             )
 
-        # Write the updated website file data back to the file
+        # Write the updated changelog file data back to the file
         with open(self.changelog_path / self.changelog_filename, "w", encoding="utf-8") as json_write_file:
             json.dump(existing_data, json_write_file, indent=4, ensure_ascii=False)

@@ -25,6 +25,7 @@ Currently, only official Arch packages are supported. AUR, Flatpak, and other so
 ### Minor release example
 ```json
 "gdb": {
+        "description": "The GNU Debugger",
         "base package": "-",
         "current version": "15.2-1",
         "new version": "15.2-2",
@@ -57,6 +58,7 @@ Currently, only official Arch packages are supported. AUR, Flatpak, and other so
 ### Major release example
 ```json
 "xorg-server": {
+        "description": "Xorg X server",
         "base package": "-",
         "current version": "21.1.13-1",
         "new version": "21.1.14-1",
@@ -120,9 +122,8 @@ pipx install .
 ```
 
 You can now remove the `archlog` folder if you wish too.
-```bash
-rm -r archlog
-```
+
+Beware: It is recommended not to clone the project directly into your /home/ folder, since the generated changelog will also be stored there and may get deleted together with the project files if you remove the downloaded content.
 
 Start the CLI with:
 ```bash

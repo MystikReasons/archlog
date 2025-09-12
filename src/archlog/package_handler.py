@@ -17,6 +17,7 @@ PackageInfo = namedtuple(
     "PackageInfo",
     [
         "package_name",
+        "package_description",
         "package_base",
         "package_upstream_url_overview",
         "current_version",
@@ -135,6 +136,7 @@ class PackageHandler:
         :type package: Dict
         :return: A namedtuple. The namedtuple contains:
             - package_name (str): The name of the package.
+            - package_description (str): Description of the package.
             - package_base (str): Base package if the package is derived.
             - package_upstream_url_overview (str): The upstream overview link of the package.
             - current_version (str): The current version of the package.
@@ -176,6 +178,7 @@ class PackageHandler:
         package_base = (
             arch_package_overview_information[1] if arch_package_overview_information[1] != package_name else ""
         )
+        package_description = arch_package_overview_information[2] if arch_package_overview_information[2] else ""
 
         # Some Arch packages do have versions that look like this: 1:1.16.5-2
         # On their repository host (Gitlab) the tags do like this: 1-1.16.5-2
@@ -187,6 +190,7 @@ class PackageHandler:
 
         return self.package_info(
             package_name,
+            package_description,
             package_base,
             package_upstream_url_overview,
             current_version,
