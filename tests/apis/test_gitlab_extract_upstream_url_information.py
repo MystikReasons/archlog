@@ -15,6 +15,11 @@ def test_freedesktop_url(handler):
     assert handler.extract_upstream_url_information(url) == ("freedesktop", "org", "xorg", "xserver")
 
 
+def test_freedesktop2_url(handler):
+    url = "https://gitlab.freedesktop.org/xorg/lib/libXScrnSaver"
+    assert handler.extract_upstream_url_information(url) == ("freedesktop", "org", "xorg/lib", "libXScrnSaver")
+
+
 def test_native_url(handler):
     url = "https://gitlab.com/kernel-firmware/linux-firmware"
     assert handler.extract_upstream_url_information(url) == (None, "com", "kernel-firmware", "linux-firmware")

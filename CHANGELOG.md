@@ -6,6 +6,7 @@
 - **Package Handler** Refactor and normalize underscores for tags in get_closest_package_tag() for proper matching
 - **Package Handler** Add further KDE package category "network"
 - **Package Handler** Break out of the loop if a KDE category was found instead of looping until the end
+- **GitLab API** Fix GitLab URL extraction; handle multi-segment paths and /-/suffixes
 
 ### Bug fixes
 

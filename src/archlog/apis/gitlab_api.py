@@ -229,17 +229,27 @@ class GitLabAPI:
         :rtype: Optional[Tuple[str, str, str, str]]
         """
         if "invent.kde" in upstream_url:
+            # https://invent.kde.org/<project_path>/<package_name>
             match = re.search(r"https://invent\.([^.]+)\.(org)/([^/]+)/([^/]+)(?:/|$)", upstream_url)
+            if match:
+                package_repository = match.group(1)
+                tld = match.group(2)
+                project_path = match.group(3)
+                package_name = match.group(4)
+                return package_repository, tld, project_path, package_name
         else:
-            match = re.search(r"https://gitlab(?:\.([^.]+))?\.(com|org)/([^/]+)/([^/]+)(?:/|$)", upstream_url)
+            # Remove optional "/-/..." suffix (e.g., /tags, /merge_requests)
+            url_without_suffix = re.sub(r"/-/.*$", "", upstream_url)
+            # Greedy match everything until the last segment
+            # https://gitlab[.<subdomain>].(com|org)/<project_path>/<package_name>
+            match = re.search(r"https://gitlab(?:\.([^.]+))?\.(com|org)/(.+)/([^/]+)(?:/|$)", url_without_suffix)
+            if match:
+                package_repository = match.group(1)
+                tld = match.group(2)
+                project_path = match.group(3)
+                package_name = match.group(4)
+                return package_repository, tld, project_path, package_name
 
-        if match:
-            package_repository = match.group(1)
-            tld = match.group(2)
-            project_path = match.group(3)
-            package_name = match.group(4)
-
-            return package_repository, tld, project_path, package_name
         return None
 
     def get_file_content(self, base_url: str, project_path: str, filename: str) -> Optional[str]:
