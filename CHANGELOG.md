@@ -9,6 +9,7 @@
 - **GitLab API** Fix GitLab URL extraction; handle multi-segment paths and /-/suffixes
 - **GitHub API** Limit the amount of REST API pages to 8
 - **Package Handler** Refactor extract base Git URL parsing into separate function for better testability
+- **Test** Add tests for extracting the base Git URL
 
 ### Bug fixes
 
