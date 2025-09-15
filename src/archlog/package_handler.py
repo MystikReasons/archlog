@@ -1062,26 +1062,59 @@ class PackageHandler:
 
     def get_closest_package_tag(self, current_tag: str, tags: List[str], threshold: int = 70) -> Optional[str]:
         """
-        Finds the closest matching version string based on fuzzy string similarity using RapidFuzz.
+        Find the package tag from a list that is most similar to the current tag,
+        taking into account common versioning formats and suffixes.
 
-        :param current_tag: The current package tag string to compare.
+        The function performs the following steps:
+            1. Normalizes the current_tag by removing leading digits with dash, leading 'v',
+               replacing underscores with dots, and removing trailing numeric suffixes (e.g., "-1"),
+               sbut keeping "-rcX" intact.
+            2. Normalizes all tags in the same way.
+            3. Uses fuzzy string matching (RapidFuzz) to find the tag most similar to the normalized current_tag.
+            4. Returns the original tag from `tags` that is the closest match, or None if no match exceeds the threshold.
+
+        :param current_tag: The current package tag string to compare (e.g., "1-6.3.90-1").
         :type current_tag: str
-        :param tags: A list of package tags strings.
+        :param tags: A list of package tags strings (e.g., ["v6.3.90", "v6.3.91"]).
         :type tags: List[str]
         :param threshold: Minimum similarity score (0–100) to consider a match.
         :type threshold: int
         :return: The most similar package tag string or None if no match is good enough.
         :rtype: Optional[str]
         """
-        # Preprocess current_tag: remove leading digits + dash (e.g., "1-") and trailing "-1"
-        cleaned_tag = re.sub(r"(^\d{1,2}-|^[A-Za-z]+-|-\d+$)", "", current_tag)
 
-        matches = process.extract(cleaned_tag, tags, score_cutoff=threshold)
+        def normalize_tag(tag: str) -> str:
+            """
+            Normalize a package tag for comparison.
 
+            Steps:
+            1. Remove leading digits with dash (e.g., "1-6.3.90-1" -> "6.3.90")
+            2. Remove a leading 'v' if present
+            3. Replace underscores '_' with dots '.'
+            4. Remove trailing numeric suffix like '-1', but keep '-rcX' intact
+
+            :param tag: The raw package tag to normalize
+            :type tag: str
+            :return: The normalized tag suitable for fuzzy matching
+            :rtype: str
+            """
+            tag = re.sub(r"^\d{1,2}-", "", tag)
+            tag = tag.lstrip("v")
+            tag = tag.replace("_", ".")
+            tag = re.sub(r"-(\d+)$", "", tag)
+
+            return tag
+
+        cleaned_tag = normalize_tag(current_tag)
+        normalized_tags = {normalize_tag(t): t for t in tags}
+
+        matches = process.extract(cleaned_tag, normalized_tags.keys(), score_cutoff=threshold)
         if not matches:
             return None
 
-        return matches[0][0]
+        best_match, score, _ = matches[0]
+
+        return normalized_tags[best_match]
 
     def get_changelog_compare_package_tags(
         self,
