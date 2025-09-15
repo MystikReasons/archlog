@@ -59,8 +59,9 @@ class GitHubAPI:
         results = []
         params = {"per_page": page_size}
         page_number = 1
+        max_pages = 8
 
-        while url:
+        while url and (page_number <= max_pages):
             self.logger.debug(f"[Debug] Fetching page {page_number}: {url}")
             data, headers = self.__get_single_page(url, params, max_attempts, backoff_factor)
 

@@ -7,6 +7,7 @@
 - **Package Handler** Add further KDE package category "network"
 - **Package Handler** Break out of the loop if a KDE category was found instead of looping until the end
 - **GitLab API** Fix GitLab URL extraction; handle multi-segment paths and /-/suffixes
+- **GitHub API** Limit the amount of REST API pages to 8
 
 ### Bug fixes
 
