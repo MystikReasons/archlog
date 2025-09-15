@@ -1335,7 +1335,7 @@ class PackageHandler:
             commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
 
         if not commits:
-            self.logger.debug(f"[Debug]: No commit messages found in the response from {compare_tags_url}")
+            self.logger.info(f"[Info]: No commit messages found in the response from {compare_tags_url}")
             return None
 
         if "git.kernel.org" in source:
