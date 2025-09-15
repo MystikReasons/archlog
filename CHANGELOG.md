@@ -10,6 +10,7 @@
 - **GitHub API** Limit the amount of REST API pages to 8
 - **Package Handler** Refactor extract base Git URL parsing into separate function for better testability
 - **Test** Add tests for extracting the base Git URL
+- **Package Handler** Handle GitHub packages in get_changelog_compare_package_tags when no project_path was given as parameter
 
 ### Bug fixes
 

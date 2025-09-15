@@ -1145,10 +1145,24 @@ class PackageHandler:
         compare_tags_url = None
         closest_match_current_tag = None
         closest_match_new_tag = None
+        account_name_extracted = None
+        package_name_extracted = None
 
         if "major" in release_type:
             if "github" in source:
-                upstream_package_tags = self.github_api.get_package_tags(project_path, package_name)
+                if project_path:
+                    upstream_package_tags = self.github_api.get_package_tags(project_path, package_name)
+                else:
+                    upstream_url_information = self.github_api.extract_upstream_url_information(source)
+                    if upstream_url_information:
+                        account_name_extracted = upstream_url_information[0]
+                        package_name_extracted = upstream_url_information[1]
+
+                        upstream_package_tags = self.github_api.get_package_tags(
+                            account_name_extracted, package_name_extracted
+                        )
+                    else:
+                        upstream_package_tags = None
             elif "gitlab" in source:
                 if project_path:
                     subdomain = f"{package_repository}." if package_repository else ""
@@ -1299,6 +1313,13 @@ class PackageHandler:
                 commits = self.github_api.get_commits_between_tags(
                     project_path,
                     package_name,
+                    closest_match_current_tag if closest_match_current_tag else current_tag,
+                    closest_match_new_tag if closest_match_new_tag else new_tag,
+                )
+            elif account_name_extracted and package_name_extracted:
+                commits = self.github_api.get_commits_between_tags(
+                    account_name_extracted,
+                    package_name_extracted,
                     closest_match_current_tag if closest_match_current_tag else current_tag,
                     closest_match_new_tag if closest_match_new_tag else new_tag,
                 )
