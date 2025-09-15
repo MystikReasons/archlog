@@ -702,31 +702,8 @@ class PackageHandler:
 
                 # Handle URL's
                 #
-                if "gitlab" in url_old or "gitlab" in url_new:
-                    # The URL could look like this:
-                    # +\tsource = git+https://gitlab.winehq.org/wine/wine.git?signed#tag=wine-10.13
-                    # We only want to extract: https://gitlab.winehq.org/wine/wine
-                    url_regex = r"(https://gitlab(?:\.[^/]+)?\.(?:org|com)/[^/]+/[^/]+?)(?:\.git)?(?:[?#]|$)"
-                elif "github" in url_old or "github" in url_new:
-                    # The URL could look like this:
-                    # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
-                    # https://github.com/abseil/abseil-cpp/archive/20250127.0/abseil-cpp-20250127.0.tar.gz
-                    # We only want to extract: https://github.com/abseil/abseil-cpp/
-                    url_regex = r"(https://github\.com/[^/]+/[^/?]+)"
-                elif ".git" in url_old or ".git" in url_new:
-                    # The URL could look like this:
-                    # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
-                    # We only want to extract: https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git
-                    url_regex = r"(https://.*?\.git)"
-                else:
-                    # Fallback
-                    url_regex = r"(https://.*?)(?=#|$)"
-
-                match_url_old = re.search(url_regex, url_old)
-                match_url_new = re.search(url_regex, url_new)
-
-                repo_url_old = match_url_old.group(1) if match_url_old else None
-                repo_url_new = match_url_new.group(1) if match_url_new else None
+                repo_url_old = self.extract_base_git_url(url_old)
+                repo_url_new = self.extract_base_git_url(url_new)
 
                 # Handle tags
                 #
@@ -1598,3 +1575,48 @@ class PackageHandler:
             return f"https://{host}/{package_config['gitlab']}"
 
         return None
+
+    def extract_base_git_url(self, unprocessed_url: str) -> Optional[str]:
+        """Extracts the base URL of a Git repository from given URLs,
+        handling GitHub, GitLab, and generic Git URLs.
+
+        This function removes query parameters, tags, and optional .git suffixes
+        for GitHub and GitLab URLs, returning a clean base repository URL.
+
+        :param unprocessed_url: The URL string to be processed
+        :type unprocessed_url: str
+        :return: The cleaned base URL of the Git repository or None if there's no match
+        :rtype: Optional[str]
+        """
+        # Remove leading 'git+' or '-\tsource = ' etc.
+        unprocessed_url = re.sub(r"^[\-\+\s\\]*source\s*=\s*git\+", "", unprocessed_url)
+
+        if "gitlab" in unprocessed_url:
+            # The URL could look like this:
+            # https://gitlab.winehq.org/wine/wine.git?signed#tag=wine-10.13
+            # We only want to extract: https://gitlab.winehq.org/wine/wine
+            url_regex = r"https://gitlab(?:\.[^/]+)?\.(?:org|com)/[^/]+/[^/?#]+"
+        elif "github" in unprocessed_url:
+            # The URL could look like this:
+            # https://github.com/libexpat/libexpat?signed#tag=R_2_7_0
+            # https://github.com/abseil/abseil-cpp/archive/20250127.0/abseil-cpp-20250127.0.tar.gz
+            # We only want to extract: https://github.com/abseil/abseil-cpp/
+            url_regex = r"https://github\.com/[^/]+/[^/?#\.]+"
+        elif ".git" in unprocessed_url:
+            # The URL could look like this:
+            # https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git#tag=v34.1?signed
+            # We only want to extract: https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod.git
+            url_regex = r"https://.*?\.git"
+        else:
+            # Fallback
+            url_regex = r"https://.*?)(?=[?#]|$)"
+
+        match = re.search(url_regex, unprocessed_url)
+        if not match:
+            return None
+
+        # Remove any trailing /archive/... or query/fragment if present
+        repo_url = match.group(0)
+        repo_url = re.sub(r"(\.git|/archive/.*|[?#].*)$", "", repo_url)
+
+        return repo_url
