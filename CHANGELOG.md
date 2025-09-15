@@ -14,6 +14,8 @@
 
 ### Bug fixes
 
+**GitHub API** Fix missing call raise_for_status() which should then call the retry loop
+
 # 1.1 (2025-09-09)
 
 ### Features and enhancements

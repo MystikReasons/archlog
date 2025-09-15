@@ -131,7 +131,7 @@ class GitHubAPI:
         for attempt in range(max_attempts):
             try:
                 response = self.client.get(url, params=params, follow_redirects=True)
-                header = response.headers
+                response.raise_for_status()
                 return response.json(), response.headers
 
             except httpx.HTTPStatusError as ex:  # handles 4xx/5xx errors after raise_for_status()
