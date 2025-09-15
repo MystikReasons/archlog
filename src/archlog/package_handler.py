@@ -1393,6 +1393,7 @@ class PackageHandler:
             "sdk",
             "system",
             "utilities",
+            "network",
         ]
 
         # KDE tags look like this: v6.1.3 while Arch uses it like this 1:6.1.3-1

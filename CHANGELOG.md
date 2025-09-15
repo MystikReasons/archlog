@@ -3,6 +3,8 @@
 ### Features and enhancements
 
 - **Changelog** Display package description in the changelog file for each package
+- **Package Handler** Refactor and normalize underscores for tags in get_closest_package_tag() for proper matching
+- **Package Handler** Add further KDE package category "network"
 
 ### Bug fixes
 
