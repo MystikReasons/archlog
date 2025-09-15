@@ -1479,6 +1479,7 @@ class PackageHandler:
             for category in kde_package_categories:
                 if category in kde_category.lower():
                     kde_gitlab_url = f"https://invent.kde.org/{category}/{package_name}/"
+                    break
 
             if not kde_gitlab_url:
                 self.logger.error(f"[Error]: Unknown KDE GitLab group in: {kde_category}")
