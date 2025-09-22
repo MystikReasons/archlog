@@ -49,7 +49,7 @@ class PackageHandler:
         self.config = config
         self.web_scraper = WebScraper(self.logger, self.config)
         self.gitlab_api = GitLabAPI(self.logger)
-        self.github_api = GitHubAPI(self.logger)
+        self.github_api = GitHubAPI(self.logger, self.config)
         self.archlinux_api = ArchLinuxAPI(self.logger)
         self.enabled_repositories = []
         self.package_info = PackageInfo

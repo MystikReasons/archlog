@@ -17,11 +17,13 @@ class GitHubAPI:
     BASE_URL = "https://api.github.com"
     LINK_REL = re.compile(r'<([^>]+)>;\s*rel="([^"]+)"')
 
-    def __init__(self, logger, retries: int = 3, timeout: float = 10) -> None:
+    def __init__(self, logger, config, retries: int = 3, timeout: float = 10) -> None:
         """Constructor method"""
         self.logger = logger
+        self.config = config
 
         self.client = httpx.Client(timeout=timeout, transport=httpx.HTTPTransport(retries=retries))
+        self.token = self.config.config.get("github-personal-access-token")
 
         # Retry HTTP responses with these status codes:
         # 403: Forbidden – typically indicates GitHub primary rate limit exceeded (x-ratelimit-remaining=0),
@@ -57,13 +59,14 @@ class GitHubAPI:
         """
         url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
         results = []
-        params = {"per_page": page_size}
+        request_headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
+        request_params = {"per_page": page_size}
         page_number = 1
         max_pages = 8
 
         while url and (page_number <= max_pages):
             self.logger.debug(f"[Debug] Fetching page {page_number}: {url}")
-            data, headers = self.__get_single_page(url, params, max_attempts, backoff_factor)
+            data, headers = self.__get_single_page(url, request_headers, request_params, max_attempts, backoff_factor)
 
             if not data:
                 self.logger.error(f"[Error] Failed to fetch page {page_number}. Aborting pagination.")
@@ -97,12 +100,12 @@ class GitHubAPI:
                 break
 
             url = next_url
-            params = None  # For page 2+ already in URL
+            request_params = None  # For page 2+ already in URL
             page_number += 1
 
         return results
 
-    def __get_single_page(self, url: str, params: Dict, max_attempts: int, backoff_factor: int):
+    def __get_single_page(self, url: str, headers: Dict, params: Dict, max_attempts: int, backoff_factor: int):
         """Fetch a single page from GitHub with retry logic for rate limits and transient errors.
 
         If a retryable HTTP status code is returned (e.g., 429, 500, 502, 503, 504, see GitHubAPI.retry_status_codes),
@@ -119,8 +122,10 @@ class GitHubAPI:
 
         :param url: The API URL to request
         :type url: str
+        :param headers: Query headers (e.g., authorization token)
+        :type headers: dict
         :param params: Query parameters (e.g., per_page)
-        :type params: dict or None
+        :type params: dict
         :param max_attempts: Total number of attempts before giving up (including the first try).
         :type max_attempts: int
         :param backoff_factor: Exponential backoff delay in seconds.
@@ -130,7 +135,7 @@ class GitHubAPI:
         """
         for attempt in range(max_attempts):
             try:
-                response = self.client.get(url, params=params, follow_redirects=True)
+                response = self.client.get(url, headers=headers, params=params, follow_redirects=True)
                 response.raise_for_status()
                 return response.json(), response.headers
 
@@ -151,12 +156,15 @@ class GitHubAPI:
                         self.logger.info("[Info] GitHub API:")
                         self.logger.info(f"primary rate limit reached (403) -> waiting {wait}s until reset")
                         self.logger.info(
-                            "Note: You can avoid this wait by using a Personal Access Token (GITHUB_TOKEN),"
+                            "Note: You can avoid this wait by using a classical Personal Access Token (GITHUB_TOKEN),"
                         )
                         self.logger.info(
-                            "which raises the limit to 5000 requests per hour instead of 60 requests per hour"
+                            "which raises the limit to 5000 requests per hour instead of 60 requests per hour."
                         )
-                        self.logger.info("Note: This feature is not yet released")
+                        self.logger.info(
+                            "Copy and paste the created token into the field 'github-personal-access-token' in the config file."
+                        )
+                        self.logger.info("Create your personal token here: https://github.com/settings/tokens")
 
                     # Fallback: exponential backoff
                     if wait is None:

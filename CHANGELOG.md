@@ -11,6 +11,7 @@
 - **Package Handler** Refactor extract base Git URL parsing into separate function for better testability
 - **Test** Add tests for extracting the base Git URL
 - **Package Handler** Handle GitHub packages in get_changelog_compare_package_tags when no project_path was given as parameter
+- **GitHub API** Add the possibilty for user adding their personal access token to increase the request limit from 60 to 5000 per hour
 
 ### Bug fixes
 
