@@ -27,6 +27,7 @@ PackageInfo = namedtuple(
         "current_main",
         "current_main_altered",
         "new_main",
+        "new_main_altered",
         "current_suffix",
         "new_suffix",
     ],
@@ -146,6 +147,7 @@ class PackageHandler:
             - current_main (str): The main part of the current version (before the hyphen).
             - current_main_altered (str): The altered main part of the current version.
             - new_main (str): The main part of the new version (before the hyphen).
+            - new_main_altered (str): The altered main part of the new version.
             - current_suffix (str): The suffix of the current version (after the hyphen).
             - new_suffix (str): The suffix of the new version (after the hyphen).
         :rtype: namedtuple
@@ -166,6 +168,7 @@ class PackageHandler:
         new_version_altered = new_version
         current_version_altered = current_version
         current_main_altered = current_main
+        new_main_altered = new_main
 
         arch_package_overview_information = self.archlinux_api.get_package_overview_site_information(package_name)
 
@@ -187,6 +190,7 @@ class PackageHandler:
             new_version_altered = new_version_altered.replace(old, new)
             current_version_altered = current_version_altered.replace(old, new)
             current_main_altered = current_main_altered.replace(old, new)
+            new_main_altered = new_main_altered.replace(old, new)
 
         return self.package_info(
             package_name,
@@ -200,6 +204,7 @@ class PackageHandler:
             current_main,
             current_main_altered,
             new_main,
+            new_main_altered,
             current_suffix,
             new_suffix,
         )
@@ -525,13 +530,13 @@ class PackageHandler:
                 continue
 
         # Check if the last intermediate tag is a minor release
-        if second_compare_main == package.new_main and second_compare_suffix != package.new_suffix:
+        if second_compare_main == package.new_main_altered and second_compare_suffix != package.new_suffix:
             self.logger.info(f"[Info]: {package.new_version_altered} is a minor release (after intermediate release)")
 
             package_changelog_temp = self.get_changelog_compare_package_tags(
                 package_source_files_url,
                 release,
-                package.new_version,
+                package.new_version_altered,
                 package_name,
                 "minor",
             )
@@ -540,7 +545,7 @@ class PackageHandler:
                 package_changelog += package_changelog_temp
 
         # Check if the last intermediate tag is a major release
-        elif second_compare_main != package.new_main:
+        elif second_compare_main != package.new_main_altered:
             self.logger.info(f"[Info]: {package.new_version_altered} is a major release (after intermediate release)")
 
             # Always get the Arch package changelog too, which is the same as the "minor" release case

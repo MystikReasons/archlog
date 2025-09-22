@@ -18,6 +18,7 @@
 **GitHub API** Fix missing call raise_for_status() which should then call the retry loop
 **Package Handler** Fix parsing of package tag in intermediate tags handling in regard to the hyphens
 **Package Handler** Fix shown compare-url-tags-arch when handling intermediate tags. It now uses the correct new tag
+**Package Handler** Fix minor release handling when it is an intermediate tag. The changelog is now correctly formatted
 
 # 1.1 (2025-09-09)
 
