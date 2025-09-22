@@ -464,11 +464,13 @@ class PackageHandler:
             # Package tags can look like this:
             # 1-16.5-2 or 20240526-1
             if release.count("-") >= 2:
-                second_compare_main = release.split("-")[0].replace("1:", "1-")
-                second_compare_suffix = release.split("-")[2]
+                parts = release.split("-")
+                second_compare_main = "-".join(parts[:2]) # 1-16.5
+                second_compare_suffix = parts[2]
             else:
-                second_compare_main = release.split("-")[0].replace("1:", "1-")
-                second_compare_suffix = release.split("-")[1]
+                parts = release.split("-")
+                second_compare_main = parts[0]
+                second_compare_suffix = parts[1]
 
             # Check if there was a minor release in between
             # Example: 1.16.5-2 -> 1.16.5-3
