@@ -1243,7 +1243,7 @@ class PackageHandler:
             compare_tags_url = (
                 f"{source.rstrip('/')}/-/compare/"
                 f"{(closest_match_current_tag or current_tag)}..."
-                f"{(closest_match_new_tag or new_tag)}"
+                f"{(closest_match_new_tag or override_shown_new_tag or new_tag)}"
             )
         elif "git.kernel.org" in source:
             # Example:
