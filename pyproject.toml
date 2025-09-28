@@ -1,13 +1,10 @@
-[tool.black]
-line-length = 120
-
 [build-system]
-requires = ["setuptools>=78.1.0"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "archlog"
-version = "1.0.9"
+version = "1.1"
 description = "View and track Arch Linux package changelogs with version and upstream updates"
 keywords = ["arch", "archlinux", "changelog", "packages", "pacman", "version-tracking", "linux", "tag"]
 readme = "README.md"
@@ -24,12 +21,13 @@ dependencies = [
     "httpx==0.28.1",
     "rapidfuzz==3.13.0",
 ]
-optional-dependencies = { dev = [
-    "black==25.1.0",
-    "flake8==7.1.2",
-    "setuptools>=78.1.0",
-    "pytest==8.4.0",
-] }
+
+[project.optional-dependencies]
+dev = [
+    "black==25.9.0",
+    "flake8==7.3.0",
+    "pytest==8.4.2",
+]
 
 [project.urls]
 Homepage = "https://github.com/MystikReasons/archlog"

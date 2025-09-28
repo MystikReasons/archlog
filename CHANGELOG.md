@@ -12,6 +12,7 @@
 - **Test** Add tests for extracting the base Git URL
 - **Package Handler** Handle GitHub packages in get_changelog_compare_package_tags when no project_path was given as parameter
 - **GitHub API** Add the possibilty for user adding their personal access token to increase the request limit from 60 to 5000 per hour
+- **Pyproject** Update pyproject.toml to fix invalid optional-dependencies section according to PEP 621, update dev-packages and remove unused statements
 
 ### Bug fixes
 
