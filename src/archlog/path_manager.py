@@ -1,6 +1,5 @@
 from typing import Optional, Dict
 from pathlib import Path
-import os
 
 from archlog.utils import get_datetime_now
 
@@ -9,9 +8,15 @@ class PathManager:
     def __init__(self, config: Optional[Dict[str, str]] = None) -> None:
         paths = config or {}
 
-        self.config_dir = Path(os.path.expanduser(paths.get("config-dir", "~/.config/archlog")))
-        self.changelog_dir = Path(os.path.expanduser(paths.get("changelog-dir", "~/archlog/changelog")))
-        self.logs_dir = Path(os.path.expanduser(paths.get("logs-dir", "~/.local/state/archlog/logs")))
+        self.config_dir = Path(
+            paths.get("config-dir", "~/.config/archlog")
+        ).expanduser()
+        self.changelog_dir = Path(
+            paths.get("changelog-dir", "~/archlog/changelog")
+        ).expanduser()
+        self.logs_dir = Path(
+            paths.get("logs-dir", "~/.local/state/archlog/logs")
+        ).expanduser()
 
         self.timestamp_changelog = get_datetime_now("%Y%m%d-%H%M")
 
