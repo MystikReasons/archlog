@@ -34,7 +34,9 @@ class ConfigHandler:
 
         self.logger.info(f"[Info]: Config file:         {self.config_path}")
         self.logger.info(f"[Info]: Changelog directory: {self.changelog_path}")
-        self.logger.info(f"[Info]: Logs directory:      {self.path_manager.get_logs_path()}")
+        self.logger.info(
+            f"[Info]: Logs directory:      {self.path_manager.get_logs_path()}"
+        )
 
     def load_default_config(self) -> Dict[str, Any]:
         """
@@ -45,7 +47,11 @@ class ConfigHandler:
         """
         import importlib.resources as config_resources
 
-        with config_resources.files("archlog").joinpath("_resources/config.json").open("r", encoding="utf-8") as config:
+        with (
+            config_resources.files("archlog")
+            .joinpath("_resources/config.json")
+            .open("r", encoding="utf-8") as config
+        ):
             return json.load(config)
 
     def load_config(self) -> Dict[str, Any]:
@@ -60,7 +66,9 @@ class ConfigHandler:
         :rtype: Dict[str, Any]
         """
         if not self.config_path.exists():
-            self.logger.debug(f"[Debug]: Config file not found -> creating default: {self.config_path}")
+            self.logger.debug(
+                f"[Debug]: Config file not found -> creating default: {self.config_path}"
+            )
             with open(self.config_path, "w", encoding="utf-8") as write_config_file:
                 json.dump(self.default_config, write_config_file, indent=2)
 
@@ -73,7 +81,9 @@ class ConfigHandler:
 
         # Check if the default config file has new entries which the current user config file does not have
         if self.merge_config(self.default_config, user_config):
-            self.logger.info(f"[Info]: Adding missing config values from default config file.")
+            self.logger.info(
+                f"[Info]: Adding missing config values from default config file."
+            )
             with open(self.config_path, "w", encoding="utf-8") as write_config_file:
                 json.dump(user_config, write_config_file, indent=2)
 
@@ -88,7 +98,9 @@ class ConfigHandler:
         if os.path.exists(self.changelog_path / self.changelog_filename):
             os.remove(self.changelog_path / self.changelog_filename)
 
-    def merge_config(self, default_config: Dict[str, Any], user_config: Dict[str, Any]) -> bool:
+    def merge_config(
+        self, default_config: Dict[str, Any], user_config: Dict[str, Any]
+    ) -> bool:
         """
         Recursively adds missing keys from the default configuration into the user configuration.
 
@@ -137,7 +149,9 @@ class ConfigHandler:
         """
         if (self.changelog_path / self.changelog_filename).exists():
             try:
-                with open(self.changelog_path / self.changelog_filename, "r") as json_read_file:
+                with open(
+                    self.changelog_path / self.changelog_filename, "r"
+                ) as json_read_file:
                     existing_data = json.load(json_read_file)
             except json.JSONDecodeError:
                 existing_data = {"packages": [], "changelog": {}}
@@ -178,7 +192,10 @@ class ConfigHandler:
 
                             compare_url = package_temp[5]
                             if (
-                                (package_temp[4] == "arch" or package_temp[4] == "minor")
+                                (
+                                    package_temp[4] == "arch"
+                                    or package_temp[4] == "minor"
+                                )
                                 and "archlinux.org" in compare_url
                                 and not compare_tags_url_arch
                             ):
@@ -187,7 +204,9 @@ class ConfigHandler:
                                 compare_tags_url_origin = compare_url
 
                     versions_dict[package_tag] = {
-                        "release-type": ("major" if release_type == "arch" else release_type),
+                        "release-type": (
+                            "major" if release_type == "arch" else release_type
+                        ),
                         "compare-url-tags-arch": (compare_tags_url_arch),
                         "compare-url-tags-origin": (compare_tags_url_origin),
                         "changelog": {
@@ -197,25 +216,34 @@ class ConfigHandler:
                     }
 
                     if release_type == "minor":
-                        versions_dict[package_tag]["changelog"]["changelog origin package"].append(
-                            "- Not applicable, minor release -"
-                        )
-                        versions_dict[package_tag]["compare-url-tags-origin"] = "- Not applicable, minor release -"
+                        versions_dict[package_tag]["changelog"][
+                            "changelog origin package"
+                        ].append("- Not applicable, minor release -")
+                        versions_dict[package_tag][
+                            "compare-url-tags-origin"
+                        ] = "- Not applicable, minor release -"
                     else:
                         major_exists = any(
-                            release_type_check == "major" for _, _, _, _, release_type_check, _ in package_changelog
+                            release_type_check == "major"
+                            for _, _, _, _, release_type_check, _ in package_changelog
                         )
 
                         if not major_exists:
-                            versions_dict[package_tag]["changelog"]["changelog origin package"].append(
+                            versions_dict[package_tag]["changelog"][
+                                "changelog origin package"
+                            ].append(
                                 "- ERROR: Couldn't find origin changelog. Check the logs for further information -"
                             )
                 if release_type != "major":
-                    versions_dict[package_tag]["changelog"]["changelog Arch package"].append(
+                    versions_dict[package_tag]["changelog"][
+                        "changelog Arch package"
+                    ].append(
                         {"commit message": changelog_message, "commit URL": package_url}
                     )
                 else:
-                    versions_dict[package_tag]["changelog"]["changelog origin package"].append(
+                    versions_dict[package_tag]["changelog"][
+                        "changelog origin package"
+                    ].append(
                         {"commit message": changelog_message, "commit URL": package_url}
                     )
         else:
@@ -239,11 +267,15 @@ class ConfigHandler:
                     "version-tag": versionTag,
                     "release-type": changelog_data["release-type"],
                     "compare-url-tags-arch": changelog_data["compare-url-tags-arch"],
-                    "compare-url-tags-origin": changelog_data["compare-url-tags-origin"],
+                    "compare-url-tags-origin": changelog_data[
+                        "compare-url-tags-origin"
+                    ],
                     "changelog": changelog_data["changelog"],
                 }
             )
 
         # Write the updated changelog file data back to the file
-        with open(self.changelog_path / self.changelog_filename, "w", encoding="utf-8") as json_write_file:
+        with open(
+            self.changelog_path / self.changelog_filename, "w", encoding="utf-8"
+        ) as json_write_file:
             json.dump(existing_data, json_write_file, indent=4, ensure_ascii=False)

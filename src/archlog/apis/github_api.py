@@ -22,7 +22,9 @@ class GitHubAPI:
         self.logger = logger
         self.config = config
 
-        self.client = httpx.Client(timeout=timeout, transport=httpx.HTTPTransport(retries=retries))
+        self.client = httpx.Client(
+            timeout=timeout, transport=httpx.HTTPTransport(retries=retries)
+        )
         self.token = self.config.config.get("github-personal-access-token")
 
         # Retry HTTP responses with these status codes:
@@ -36,7 +38,11 @@ class GitHubAPI:
         self.retry_status_codes = {403, 429, 500, 502, 503, 504}
 
     def __get(
-        self, endpoint: str, max_attempts: int = 3, backoff_factor: int = 2, page_size: int = 30
+        self,
+        endpoint: str,
+        max_attempts: int = 3,
+        backoff_factor: int = 2,
+        page_size: int = 30,
     ) -> Optional[List[Dict]]:
         """Fetch all pages from the GitHub REST API using the existing retry logic.
 
@@ -59,17 +65,23 @@ class GitHubAPI:
         """
         url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
         results = []
-        request_headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
+        request_headers = (
+            {"Authorization": f"Bearer {self.token}"} if self.token else {}
+        )
         request_params = {"per_page": page_size}
         page_number = 1
         max_pages = 8
 
         while url and (page_number <= max_pages):
             self.logger.debug(f"[Debug] Fetching page {page_number}: {url}")
-            data, headers = self.__get_single_page(url, request_headers, request_params, max_attempts, backoff_factor)
+            data, headers = self.__get_single_page(
+                url, request_headers, request_params, max_attempts, backoff_factor
+            )
 
             if not data:
-                self.logger.error(f"[Error] Failed to fetch page {page_number}. Aborting pagination.")
+                self.logger.error(
+                    f"[Error] Failed to fetch page {page_number}. Aborting pagination."
+                )
                 return None
 
             # list - when the API returns package tags
@@ -96,7 +108,9 @@ class GitHubAPI:
 
             # Fallback: if no Link header and page is smaller than page_size -> end reached
             if next_url is None and len(data) < page_size:
-                self.logger.debug(f"[Debug] Last page reached (less than {page_size} items).")
+                self.logger.debug(
+                    f"[Debug] Last page reached (less than {page_size} items)."
+                )
                 break
 
             url = next_url
@@ -105,7 +119,14 @@ class GitHubAPI:
 
         return results
 
-    def __get_single_page(self, url: str, headers: Dict, params: Dict, max_attempts: int, backoff_factor: int):
+    def __get_single_page(
+        self,
+        url: str,
+        headers: Dict,
+        params: Dict,
+        max_attempts: int,
+        backoff_factor: int,
+    ):
         """Fetch a single page from GitHub with retry logic for rate limits and transient errors.
 
         If a retryable HTTP status code is returned (e.g., 429, 500, 502, 503, 504, see GitHubAPI.retry_status_codes),
@@ -135,26 +156,40 @@ class GitHubAPI:
         """
         for attempt in range(max_attempts):
             try:
-                response = self.client.get(url, headers=headers, params=params, follow_redirects=True)
+                response = self.client.get(
+                    url, headers=headers, params=params, follow_redirects=True
+                )
                 response.raise_for_status()
                 return response.json(), response.headers
 
-            except httpx.HTTPStatusError as ex:  # handles 4xx/5xx errors after raise_for_status()
+            except (
+                httpx.HTTPStatusError
+            ) as ex:  # handles 4xx/5xx errors after raise_for_status()
                 status_code = ex.response.status_code
                 headers = ex.response.headers
 
-                if status_code in self.retry_status_codes and attempt < max_attempts - 1:
+                if (
+                    status_code in self.retry_status_codes
+                    and attempt < max_attempts - 1
+                ):
                     wait = None
 
                     if "retry-after" in headers:
                         wait = int(headers["retry-after"])
-                        self.logger.info(f"[Info] GitHub API: retry-after header found -> waiting {wait}s")
-                    elif status_code == 403 and headers.get("x-ratelimit-remaining") == "0":
+                        self.logger.info(
+                            f"[Info] GitHub API: retry-after header found -> waiting {wait}s"
+                        )
+                    elif (
+                        status_code == 403
+                        and headers.get("x-ratelimit-remaining") == "0"
+                    ):
                         reset_time = int(headers.get("x-ratelimit-reset", "0"))
                         now = int(time.time())
                         wait = max(0, reset_time - now)
                         self.logger.info("[Info] GitHub API:")
-                        self.logger.info(f"primary rate limit reached (403) -> waiting {wait}s until reset")
+                        self.logger.info(
+                            f"primary rate limit reached (403) -> waiting {wait}s until reset"
+                        )
                         self.logger.info(
                             "Note: You can avoid this wait by using a classical Personal Access Token (GITHUB_TOKEN),"
                         )
@@ -164,17 +199,23 @@ class GitHubAPI:
                         self.logger.info(
                             "Copy and paste the created token into the field 'github-personal-access-token' in the config file."
                         )
-                        self.logger.info("Create your personal token here: https://github.com/settings/tokens")
+                        self.logger.info(
+                            "Create your personal token here: https://github.com/settings/tokens"
+                        )
 
                     # Fallback: exponential backoff
                     if wait is None:
                         wait = backoff_factor**attempt
-                        self.logger.info(f"[Info] GitHub API: no retry-after or reset header -> backoff {wait}s")
+                        self.logger.info(
+                            f"[Info] GitHub API: no retry-after or reset header -> backoff {wait}s"
+                        )
 
                     time.sleep(wait)
                     continue
                 else:
-                    self.logger.error(f"[Error]: GitHub API HTTP error {status_code}: {ex}")
+                    self.logger.error(
+                        f"[Error]: GitHub API HTTP error {status_code}: {ex}"
+                    )
                     return None, {}
 
             except httpx.RequestError as ex:
@@ -231,7 +272,9 @@ class GitHubAPI:
         else:
             return None
 
-    def get_package_tags(self, account_name: str, package_name: str) -> Optional[List[str]]:
+    def get_package_tags(
+        self, account_name: str, package_name: str
+    ) -> Optional[List[str]]:
         """
         Returns a list of commits between two tags for a given GitHub project.
         Example URLs:
@@ -252,7 +295,9 @@ class GitHubAPI:
         else:
             return None
 
-    def extract_upstream_url_information(self, upstream_url: str) -> Optional[Tuple[str, str]]:
+    def extract_upstream_url_information(
+        self, upstream_url: str
+    ) -> Optional[Tuple[str, str]]:
         """
         Extracts the package repository and the project path of a given GitHub project URL and returns them.
 

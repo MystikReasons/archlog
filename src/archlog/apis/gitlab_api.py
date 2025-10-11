@@ -26,7 +26,9 @@ class GitLabAPI:
         """Constructor method"""
         self.logger = logger
 
-        self.client = httpx.Client(timeout=timeout, transport=httpx.HTTPTransport(retries=retries))
+        self.client = httpx.Client(
+            timeout=timeout, transport=httpx.HTTPTransport(retries=retries)
+        )
 
         # Retry HTTP responses with these status codes:
         # 429: Too Many Requests - rate-limiting from the server
@@ -78,10 +80,15 @@ class GitLabAPI:
                 response.raise_for_status()
                 return response.json()
 
-            except httpx.HTTPStatusError as ex:  # handles 4xx/5xx errors after raise_for_status()
+            except (
+                httpx.HTTPStatusError
+            ) as ex:  # handles 4xx/5xx errors after raise_for_status()
                 status_code = ex.response.status_code
 
-                if status_code in self.retry_status_codes and attempt < max_attempts - 1:
+                if (
+                    status_code in self.retry_status_codes
+                    and attempt < max_attempts - 1
+                ):
                     wait = backoff_factor**attempt
                     self.logger.debug(
                         f"[Debug]: GitLab API: [Retry {attempt + 1}/{max_attempts}] HTTP {status_code} - retrying in {wait}s"
@@ -89,7 +96,9 @@ class GitLabAPI:
                     time.sleep(wait)
                     continue
                 else:
-                    self.logger.error(f"[Error]: GitLab API HTTP error {status_code}: {ex}")
+                    self.logger.error(
+                        f"[Error]: GitLab API HTTP error {status_code}: {ex}"
+                    )
                     return None
 
             except httpx.RequestError as ex:
@@ -135,7 +144,11 @@ class GitLabAPI:
         response = self.__get(base_url, endpoint, params=params)
         if response:
             return [
-                (commit.get("title", ""), commit.get("created_at", ""), commit.get("web_url"))
+                (
+                    commit.get("title", ""),
+                    commit.get("created_at", ""),
+                    commit.get("web_url"),
+                )
                 for commit in response.get("commits", "")
             ]
         else:
@@ -170,7 +183,9 @@ class GitLabAPI:
         else:
             return None
 
-    def get_package_tags(self, base_url: str, project_path: str) -> Optional[List[Tuple[str, str]]]:
+    def get_package_tags(
+        self, base_url: str, project_path: str
+    ) -> Optional[List[Tuple[str, str]]]:
         """
         Returns a list of package tags for a given GitLab project.
         Example URLs:
@@ -193,7 +208,9 @@ class GitLabAPI:
         else:
             return None
 
-    def extract_upstream_url_information(self, upstream_url: str) -> Optional[Tuple[str, str, str, str]]:
+    def extract_upstream_url_information(
+        self, upstream_url: str
+    ) -> Optional[Tuple[str, str, str, str]]:
         """
         Extracts the package repository and the project path of a given GitLab project URL and returns them.
 
@@ -230,7 +247,9 @@ class GitLabAPI:
         """
         if "invent.kde" in upstream_url:
             # https://invent.kde.org/<project_path>/<package_name>
-            match = re.search(r"https://invent\.([^.]+)\.(org)/([^/]+)/([^/]+)(?:/|$)", upstream_url)
+            match = re.search(
+                r"https://invent\.([^.]+)\.(org)/([^/]+)/([^/]+)(?:/|$)", upstream_url
+            )
             if match:
                 package_repository = match.group(1)
                 tld = match.group(2)
@@ -242,7 +261,10 @@ class GitLabAPI:
             url_without_suffix = re.sub(r"/-/.*$", "", upstream_url)
             # Greedy match everything until the last segment
             # https://gitlab[.<subdomain>].(com|org)/<project_path>/<package_name>
-            match = re.search(r"https://gitlab(?:\.([^.]+))?\.(com|org)/(.+)/([^/]+)(?:/|$)", url_without_suffix)
+            match = re.search(
+                r"https://gitlab(?:\.([^.]+))?\.(com|org)/(.+)/([^/]+)(?:/|$)",
+                url_without_suffix,
+            )
             if match:
                 package_repository = match.group(1)
                 tld = match.group(2)
@@ -252,7 +274,9 @@ class GitLabAPI:
 
         return None
 
-    def get_file_content(self, base_url: str, project_path: str, filename: str) -> Optional[str]:
+    def get_file_content(
+        self, base_url: str, project_path: str, filename: str
+    ) -> Optional[str]:
         """
         Returns the "content" of a specific file decoded.
         Example URL:
@@ -274,7 +298,9 @@ class GitLabAPI:
         else:
             return None
 
-    def get_package_overview_site_information(self, base_url: str, project_path: str) -> Optional[Tuple[str, str]]:
+    def get_package_overview_site_information(
+        self, base_url: str, project_path: str
+    ) -> Optional[Tuple[str, str]]:
         """
         Returns the URL and the package description from the GitLab package overview page.
         Example URL: https://invent.kde.org/api/v4/projects/plasma%2Fspectacle

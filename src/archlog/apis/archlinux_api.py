@@ -19,7 +19,9 @@ class ArchLinuxAPI:
         """Constructor method"""
         self.logger = logger
 
-        self.client = httpx.Client(timeout=timeout, transport=httpx.HTTPTransport(retries=retries))
+        self.client = httpx.Client(
+            timeout=timeout, transport=httpx.HTTPTransport(retries=retries)
+        )
 
         # Retry HTTP responses with these status codes:
         # 429: Too Many Requests - rate-limiting from the server
@@ -29,7 +31,9 @@ class ArchLinuxAPI:
         # 504: Gateway Timeout - server did not receive a timely response from upstream
         self.retry_status_codes = {429, 500, 502, 503, 504}
 
-    def __get(self, package_name: str, max_attempts: int = 3, backoff_factor: int = 2) -> Optional[List[Dict]]:
+    def __get(
+        self, package_name: str, max_attempts: int = 3, backoff_factor: int = 2
+    ) -> Optional[List[Dict]]:
         """Sends a GET request to the ArchLinux API.
 
         If a retryable HTTP status code is returned (e.g., 429, 500, 503, see ArchLinuxAPI.retry_status_codes), the method
@@ -60,10 +64,15 @@ class ArchLinuxAPI:
                 response.raise_for_status()
                 return response.json()
 
-            except httpx.HTTPStatusError as ex:  # handles 4xx/5xx errors after raise_for_status()
+            except (
+                httpx.HTTPStatusError
+            ) as ex:  # handles 4xx/5xx errors after raise_for_status()
                 status_code = ex.response.status_code
 
-                if status_code in self.retry_status_codes and attempt < max_attempts - 1:
+                if (
+                    status_code in self.retry_status_codes
+                    and attempt < max_attempts - 1
+                ):
                     wait = backoff_factor**attempt
                     self.logger.debug(
                         f"[Debug]: ArchLinux API: [Retry {attempt + 1}/{max_attempts}] HTTP {status_code} - retrying in {wait}s"
@@ -71,7 +80,9 @@ class ArchLinuxAPI:
                     time.sleep(wait)
                     continue
                 else:
-                    self.logger.error(f"[Error]: ArchLinux API HTTP error {status_code}: {ex}")
+                    self.logger.error(
+                        f"[Error]: ArchLinux API HTTP error {status_code}: {ex}"
+                    )
                     return None
 
             except httpx.RequestError as ex:
@@ -90,7 +101,9 @@ class ArchLinuxAPI:
         self.logger.error(f"[Error]: ArchLinux API: All retries failed.")
         return None
 
-    def get_package_overview_site_information(self, package_name: str) -> Optional[Tuple[str, str, str]]:
+    def get_package_overview_site_information(
+        self, package_name: str
+    ) -> Optional[Tuple[str, str, str]]:
         """
         Returns the upstream URL and the package description from the Arch package overview page.
         Example URL of Arch package overview page: https://archlinux.org/packages/extra/x86_64/bluez/
@@ -105,7 +118,11 @@ class ArchLinuxAPI:
         results = (response or {}).get("results") or []
         if results:
             result = results[0]
-            return [result.get("url", ""), result.get("pkgbase"), result.get("pkgdesc", "")]
+            return [
+                result.get("url", ""),
+                result.get("pkgbase"),
+                result.get("pkgdesc", ""),
+            ]
         else:
             return None
 
@@ -119,4 +136,6 @@ class ArchLinuxAPI:
         :return: URL of the Arch package Git hosting site
         :rtype: str
         """
-        return f"https://gitlab.archlinux.org/archlinux/packaging/packages/{package_name}"
+        return (
+            f"https://gitlab.archlinux.org/archlinux/packaging/packages/{package_name}"
+        )

@@ -28,11 +28,17 @@ class WebScraper:
         attempt = 0
         while attempt < retries:
             try:
-                response = httpx.get(url, follow_redirects=True, timeout=self.config.config.get("webscraper-delay"))
+                response = httpx.get(
+                    url,
+                    follow_redirects=True,
+                    timeout=self.config.config.get("webscraper-delay"),
+                )
                 response.raise_for_status()
                 return response.text
             except Exception as ex:
-                self.logger.debug(f"[Debug]: HTTP exception for {url} - Error code: {ex}")
+                self.logger.debug(
+                    f"[Debug]: HTTP exception for {url} - Error code: {ex}"
+                )
             finally:
                 attempt += 1
 
@@ -41,7 +47,9 @@ class WebScraper:
         )
         return None
 
-    def find_all_elements(self, content: str, tag: Optional[str] = None, **kwargs: Any) -> List:
+    def find_all_elements(
+        self, content: str, tag: Optional[str] = None, **kwargs: Any
+    ) -> List:
         """Finds all elements in the HTML content based on the specified tag and additional attributes.
 
         :param content: The HTML content to be parsed.
@@ -56,7 +64,9 @@ class WebScraper:
         soup = BeautifulSoup(content, "html.parser")
         return soup.find_all(tag, **kwargs)
 
-    def find_element(self, content: str, tag: Optional[str] = None, **kwargs: Any) -> Optional:
+    def find_element(
+        self, content: str, tag: Optional[str] = None, **kwargs: Any
+    ) -> Optional:
         """Finds an element in the HTML content based on the specified tag and additional attributes.
 
         :param content: The HTML content to be parsed.

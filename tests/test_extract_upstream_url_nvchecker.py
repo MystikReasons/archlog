@@ -42,7 +42,10 @@ def test_extract_upstream_url_nvchecker_github_case_1(handler):
     """
 
     parsed_content = tomllib.loads(nvchecker_content)
-    assert handler.extract_upstream_url_nvchecker(parsed_content, "docker") == "https://github.com/moby/moby"
+    assert (
+        handler.extract_upstream_url_nvchecker(parsed_content, "docker")
+        == "https://github.com/moby/moby"
+    )
 
 
 def test_extract_upstream_url_nvchecker_github_case_2(handler):
@@ -57,7 +60,10 @@ def test_extract_upstream_url_nvchecker_github_case_2(handler):
     """
 
     parsed_content = tomllib.loads(nvchecker_content)
-    assert handler.extract_upstream_url_nvchecker(parsed_content, "curl") == "https://github.com/curl/curl"
+    assert (
+        handler.extract_upstream_url_nvchecker(parsed_content, "curl")
+        == "https://github.com/curl/curl"
+    )
 
 
 def test_extract_upstream_url_nvchecker_key_mismatch(handler):
@@ -69,7 +75,9 @@ def test_extract_upstream_url_nvchecker_key_mismatch(handler):
     """
 
     parsed_content = tomllib.loads(nvchecker_content)
-    assert handler.extract_upstream_url_nvchecker(parsed_content, "lib32-sqlite") == None
+    assert (
+        handler.extract_upstream_url_nvchecker(parsed_content, "lib32-sqlite") == None
+    )
 
 
 def test_extract_upstream_url_nvchecker_multiple_sources(handler):
@@ -89,4 +97,7 @@ def test_extract_upstream_url_nvchecker_multiple_sources(handler):
     """
 
     parsed_content = tomllib.loads(nvchecker_content)
-    assert handler.extract_upstream_url_nvchecker(parsed_content, "docker") == "https://github.com/moby/moby"
+    assert (
+        handler.extract_upstream_url_nvchecker(parsed_content, "docker")
+        == "https://github.com/moby/moby"
+    )

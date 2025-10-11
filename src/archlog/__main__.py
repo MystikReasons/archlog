@@ -25,9 +25,15 @@ def main():
         logger.info("No packages to upgrade")
         exit(1)
 
-    max_package_name_length = max(len(package["package_name"]) for package in packages_to_update.values())
-    max_package_current_version = max(len(package["current_version"]) for package in packages_to_update.values())
-    max_package_new_version = max(len(package["new_version"]) for package in packages_to_update.values())
+    max_package_name_length = max(
+        len(package["package_name"]) for package in packages_to_update.values()
+    )
+    max_package_current_version = max(
+        len(package["current_version"]) for package in packages_to_update.values()
+    )
+    max_package_new_version = max(
+        len(package["new_version"]) for package in packages_to_update.values()
+    )
     max_package_count = len(str(len(packages_to_update)))
 
     logger.info(f"Upgradable packages ({len(packages_to_update)}):")
@@ -45,7 +51,9 @@ def main():
 
     valid_input = False
     while not valid_input:
-        chosen_packages = input("Enter package indices (comma separated), or 0 to select all: ")
+        chosen_packages = input(
+            "Enter package indices (comma separated), or 0 to select all: "
+        )
 
         if chosen_packages == "0":
             selected_packages = packages_to_update
@@ -63,7 +71,9 @@ def main():
                     break
 
             if selected_indices:
-                selected_packages = {index: packages_to_update[index] for index in selected_indices}
+                selected_packages = {
+                    index: packages_to_update[index] for index in selected_indices
+                }
                 valid_input = True
             else:
                 logger.info("Invalid input. Please enter valid package indices.")
@@ -71,12 +81,18 @@ def main():
     if selected_packages and chosen_packages != "0":
         logger.info("Selected packages for changelog check:")
         for index, package in selected_packages.items():
-            logger.info(f"{package['package_name']} {package['current_version']} -> {package['new_version']}")
+            logger.info(
+                f"{package['package_name']} {package['current_version']} -> {package['new_version']}"
+            )
     logger.info("--------------------")
 
     for index, package in selected_packages.items():
-        logger.info(f"{package['package_name']} {package['current_version']} -> {package['new_version']}")
-        package_changelog = collect_changelog_data(package, package_handler, config_handler)
+        logger.info(
+            f"{package['package_name']} {package['current_version']} -> {package['new_version']}"
+        )
+        package_changelog = collect_changelog_data(
+            package, package_handler, config_handler
+        )
 
         if package_changelog:
             logger.info("Changelog:")
@@ -84,7 +100,9 @@ def main():
                 logger.info(f"- {message}")
                 logger.info(f"\t{url}")
         else:
-            logger.info(f"[Info]: No changelog for package: {package['package_name']} found.")
+            logger.info(
+                f"[Info]: No changelog for package: {package['package_name']} found."
+            )
 
         logger.info("--------------------------------")
 
@@ -93,7 +111,10 @@ def main():
     if open_changelog_input == "y":
         open_file_with_default_app(
             logger,
-            (config_handler.path_manager.get_changelog_path() / config_handler.path_manager.get_changelog_filename()),
+            (
+                config_handler.path_manager.get_changelog_path()
+                / config_handler.path_manager.get_changelog_filename()
+            ),
         )
     elif open_changelog_input == "n":
         pass
