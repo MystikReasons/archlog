@@ -1782,7 +1782,9 @@ class PackageHandler:
         :rtype: Optional[str]
         """
         # Remove leading 'git+' or '-\tsource = ' etc.
-        unprocessed_url = re.sub(r"^[\-\+\s\\]*source\s*=\s*git\+", "", unprocessed_url)
+        unprocessed_url = re.sub(
+            r"^[\-\+\s\\]*source\s*=\s*(?:git\+)?", "", unprocessed_url
+        ).strip()
 
         if "gitlab" in unprocessed_url:
             # The URL could look like this:
@@ -1802,7 +1804,7 @@ class PackageHandler:
             url_regex = r"https://.*?\.git"
         else:
             # Fallback
-            url_regex = r"https://.*?)(?=[?#]|$)"
+            url_regex = r"https://.*?(?=[?#]|$)"
 
         match = re.search(url_regex, unprocessed_url)
         if not match:

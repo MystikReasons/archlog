@@ -57,3 +57,12 @@ def test_unprocessed_git_url(handler):
         handler.extract_base_git_url(unprocessed_url)
         == "https://git.kernel.org/pub/scm/utils/kernel/kmod/kmod"
     )
+
+
+def test_unprocessed_non_git_url(handler):
+    unprocessed_url = "-\tsource = https://dl.discordapp.net/apps/linux/0.0.118/discord-0.0.118.tar.gz"
+
+    assert (
+        handler.extract_base_git_url(unprocessed_url)
+        == "https://dl.discordapp.net/apps/linux/0.0.118/discord-0.0.118.tar.gz"
+    )
