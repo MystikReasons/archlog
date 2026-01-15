@@ -15,7 +15,8 @@
 - **Pyproject** Update pyproject.toml to fix invalid optional-dependencies section according to PEP 621, update dev-packages and remove unused statements
 - **PathManager** Refactor: Use only pathlib for directory expansion
 - **General** Rebuild code with black 25.9.0
-- **Pyproject** Update mandatory and optional dependencies to their latest version 
+- **Pyproject** Update mandatory and optional dependencies to their latest version
+- **Package Handler** Add category `multimedia` as a KDE package category
 
 ### Bug fixes
 
