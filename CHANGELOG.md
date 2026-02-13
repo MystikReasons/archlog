@@ -25,6 +25,7 @@
 **Package Handler** Fix shown compare-url-tags-arch when handling intermediate tags. It now uses the correct new tag
 **Package Handler** Fix minor release handling when it is an intermediate tag. The changelog is now correctly formatted
 **Package Handler** Fix source URL parsing (optional git+ prefix and regex bug) in extract_base_git_url. Add additional test case
+**Package Handler** Correct tag normalization to avoid stripping numeric versions without dots
 
 # 1.1 (2025-09-09)
 

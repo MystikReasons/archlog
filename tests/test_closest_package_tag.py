@@ -32,6 +32,10 @@ def test_close_match_suffix_3(handler):
     tags = ["v2_03_35", "v2_03_34", "v2_03_33", "v2_03_32", "v2_03_31"]
     assert handler.get_closest_package_tag("2.03.34-1", tags) == "v2_03_34"
 
+def test_close_match_suffix_4(handler):
+    tags = ["1", "2", "16", "17", "18", "19", "20"]
+    assert handler.get_closest_package_tag("18-1", tags) == "18"
+    assert handler.get_closest_package_tag("20-1", tags) == "20"
 
 def test_close_match_prefix_suffix(handler):
     tags = ["v6.3.1", "v6.3.0", "v6.2.90", "v6.2.91", "v6.3.90", "v6.3.91"]

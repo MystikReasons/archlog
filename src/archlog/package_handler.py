@@ -1166,7 +1166,7 @@ class PackageHandler:
             :return: The normalized tag suitable for fuzzy matching
             :rtype: str
             """
-            tag = re.sub(r"^\d{1,2}-", "", tag)
+            tag = re.sub(r"^\d{1,2}-(?=\d+\.)", "", tag)
             tag = tag.lstrip("v")
             tag = tag.replace("_", ".")
             tag = re.sub(r"-(\d+)$", "", tag)
