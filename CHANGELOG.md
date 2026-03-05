@@ -26,6 +26,7 @@
 **Package Handler** Fix minor release handling when it is an intermediate tag. The changelog is now correctly formatted
 **Package Handler** Fix source URL parsing (optional git+ prefix and regex bug) in extract_base_git_url. Add additional test case
 **Package Handler** Correct tag normalization to avoid stripping numeric versions without dots
+**Logger Manager** Fix handle mojibake encoding in console log output, separate file and console handlers
 
 # 1.1 (2025-09-09)
 
