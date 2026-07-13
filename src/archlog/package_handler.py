@@ -1049,16 +1049,31 @@ class PackageHandler:
                 # it can cause invalid URL's for the user.
                 parsed_upstream_url = urlparse(url)
                 parts = parsed_upstream_url.path.strip("/").split("/")
+                netloc = parsed_upstream_url.netloc
+
+                # Normalize potential API-URLs
+                # https://api.github.com/repos/LuaJIT/LuaJIT/commits/...
+                # -> https://github.com/LuaJIT/LuaJIT
+                if netloc == "api.github.com" and parts and parts[0] == "repos":
+                    netloc = "github.com"
+                    parts = parts[1:] # remove "repos"
+
                 if len(parts) >= 2:
                     user, repository = parts[:2]
                     repository = repository.removesuffix(".git")
-                    url = f"{parsed_upstream_url.scheme}://{parsed_upstream_url.netloc}/{user}/{repository}"
+                    url = f"{parsed_upstream_url.scheme}://{netloc}/{user}/{repository}"
 
                 self.logger.debug(f"[Debug]: GitHub API: Upstream URL {url}")
 
                 package_upstream_url_information = (
                     self.github_api.extract_upstream_url_information(url)
                 )
+
+                if not package_upstream_url_information:
+                    self.logger.error(
+                        f"[Error]: GitHub API: No package upstream information found for {url}"
+                    )
+                    return None
 
                 package_changelog_temp = self.get_changelog_compare_package_tags(
                     url,
