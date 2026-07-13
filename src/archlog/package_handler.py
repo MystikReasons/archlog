@@ -78,12 +78,8 @@ class PackageHandler:
         :rtype: Optional[List[Dict[str, str]]]
         """
         if shutil.which("checkupdates") is None:
-            self.logger.error(
-                f(
-                    """[Error]: Command 'checkupdates' is not available. 
-                Install the package 'pacman-contrib' to use this program."""
-                )
-            )
+            self.logger.error(f("""[Error]: Command 'checkupdates' is not available. 
+                Install the package 'pacman-contrib' to use this program."""))
             exit(1)
         else:
             try:
@@ -1056,7 +1052,7 @@ class PackageHandler:
                 # -> https://github.com/LuaJIT/LuaJIT
                 if netloc == "api.github.com" and parts and parts[0] == "repos":
                     netloc = "github.com"
-                    parts = parts[1:] # remove "repos"
+                    parts = parts[1:]  # remove "repos"
 
                 if len(parts) >= 2:
                     user, repository = parts[:2]
@@ -1214,9 +1210,15 @@ class PackageHandler:
         project_path: Optional[str] = None,
     ) -> Optional[List[Tuple[str, str, str, str, str]]]:
         """Gets commits between two tags in a Git repository and retrieves commit messages and URLs.
+
         This function constructs a URL to compare the two specified tags in a Git repository, retrieves
         the comparison page, and parses it to extract commit messages and their corresponding URLs.
         The function returns a list of tuples where each tuple contains a commit message and its full URL.
+
+        For rolling-release style versions that contain an embedded commit hash
+        (e.g. luajit: 2.1.1782726002+a2bde60-1), the commit hashes are compared
+        directly instead of doing tag fuzzy matching, since upstream repositories
+        usually have no matching tags for such versions.
 
         :param source: The base URL of the Git repository.
         :type source: str
@@ -1229,8 +1231,8 @@ class PackageHandler:
         :param release_type: minor, major or arch.
         :type release_type: str
         :param override_shown_new_tag: This is only for major releases since the Arch package tag
-               and the origin package tag can differentiate (optional, defaults to None). It is also needed
-               for intermediate releases when checking the Arch package.
+            and the origin package tag can differentiate (optional, defaults to None). It is also needed
+            for intermediate releases when checking the Arch package.
         :type override_shown_new_tag: Optional[str]
         :param package_repository: The top-level namespace or organization of the project, typically found
                                 directly before the domain's TLD. For example:
@@ -1240,9 +1242,9 @@ class PackageHandler:
         :param tld: The domain's TLD. For example: org, com etc.
         :type tld: str
         :param project_path: The relative path to the repository within the platform, typically including
-                     groups, subgroups, but without the repository name. For example:
-                     - "GNOME"
-                     - "archlinux/packaging/packages"
+                    groups, subgroups, but without the repository name. For example:
+                    - "GNOME"
+                    - "archlinux/packaging/packages"
         :type project_path: str
         :return: A list of tuples where each tuple contains a commit message, its full URL and the version tag.
         :rtype: Optional[List[Tuple[str, str, str, str, str]]]
@@ -1255,107 +1257,132 @@ class PackageHandler:
         closest_match_new_tag = None
         account_name_extracted = None
         package_name_extracted = None
+        subdomain = None
+        base_url = None
+        project_full_path = None
 
         if "major" in release_type:
-            if "github" in source:
-                if project_path:
-                    upstream_package_tags = self.github_api.get_package_tags(
-                        project_path, package_name
-                    )
-                else:
+            # Packages like luajit use pkgver with embedded commit hashes:
+            # 2.1.1782726002+a2bde60-1 -> 2.1.1783773675+3c4f9fe-1
+            # Upstream has no matching tags, so compare the commit hashes
+            # directly instead of doing tag fuzzy matching.
+            current_hash = self.extract_commit_hash_from_version(current_tag)
+            new_hash = self.extract_commit_hash_from_version(
+                override_shown_new_tag or new_tag
+            )
+            if current_hash and new_hash:
+                self.logger.info(
+                    f"[Info]: {package_name}: Rolling release versions detected, "
+                    f"comparing commits {current_hash}...{new_hash} instead of tags"
+                )
+                closest_match_current_tag = current_hash
+                closest_match_new_tag = new_hash
+                # For GitHub we still need the account/repo information for the API calls
+                if "github" in source and not project_path:
                     upstream_url_information = (
                         self.github_api.extract_upstream_url_information(source)
                     )
                     if upstream_url_information:
                         account_name_extracted = upstream_url_information[0]
                         package_name_extracted = upstream_url_information[1]
-
+            else:
+                if "github" in source:
+                    if project_path:
                         upstream_package_tags = self.github_api.get_package_tags(
-                            account_name_extracted, package_name_extracted
+                            project_path, package_name
                         )
                     else:
-                        upstream_package_tags = None
-            elif "gitlab" in source:
-                if project_path:
-                    subdomain = f"{package_repository}." if package_repository else ""
-                    base_url = f"https://gitlab.{subdomain}{tld}/api/v4/projects"
-                    project_full_path = f"{project_path}/{package_name}"
-
-                    upstream_package_tags = self.gitlab_api.get_package_tags(
-                        base_url, project_full_path
-                    )
-                else:
-                    upstream_url_information = (
-                        self.gitlab_api.extract_upstream_url_information(source)
-                    )
-                    if upstream_url_information:
-                        subdomain = upstream_url_information[0]
-                        tld = upstream_url_information[1]
-                        project_path = upstream_url_information[2]
-
-                        base_url = f"https://gitlab.{subdomain}.{tld}/api/v4/projects"
+                        upstream_url_information = (
+                            self.github_api.extract_upstream_url_information(source)
+                        )
+                        if upstream_url_information:
+                            account_name_extracted = upstream_url_information[0]
+                            package_name_extracted = upstream_url_information[1]
+                            upstream_package_tags = self.github_api.get_package_tags(
+                                account_name_extracted, package_name_extracted
+                            )
+                        else:
+                            upstream_package_tags = None
+                elif "gitlab" in source:
+                    if project_path:
+                        subdomain = (
+                            f"{package_repository}." if package_repository else ""
+                        )
+                        base_url = f"https://gitlab.{subdomain}{tld}/api/v4/projects"
                         project_full_path = f"{project_path}/{package_name}"
-
+                        upstream_package_tags = self.gitlab_api.get_package_tags(
+                            base_url, project_full_path
+                        )
+                    else:
+                        upstream_url_information = (
+                            self.gitlab_api.extract_upstream_url_information(source)
+                        )
+                        if upstream_url_information:
+                            subdomain = upstream_url_information[0]
+                            tld = upstream_url_information[1]
+                            project_path = upstream_url_information[2]
+                            base_url = (
+                                f"https://gitlab.{subdomain}.{tld}/api/v4/projects"
+                            )
+                            project_full_path = f"{project_path}/{package_name}"
+                            upstream_package_tags = self.gitlab_api.get_package_tags(
+                                base_url, project_full_path
+                            )
+                        else:
+                            upstream_package_tags = None
+                elif "invent.kde" in source:
+                    if project_path:
+                        base_url = f"https://invent.kde.org/api/v4/projects"
+                        project_full_path = f"{project_path}/{package_name}"
                         upstream_package_tags = self.gitlab_api.get_package_tags(
                             base_url, project_full_path
                         )
                     else:
                         upstream_package_tags = None
-            elif "invent.kde" in source:
-                if project_path:
-                    base_url = f"https://invent.kde.org/api/v4/projects"
-                    project_full_path = f"{project_path}/{package_name}"
-
-                    upstream_package_tags = self.gitlab_api.get_package_tags(
-                        base_url, project_full_path
-                    )
                 else:
-                    upstream_package_tags = None
-            else:
-                upstream_package_tags = self.get_package_tags(
-                    source.rstrip("/") + "/-/tags"
-                )
-
-            if upstream_package_tags:
-                # Log upstream package tags for debug reasons
-                for tag in upstream_package_tags:
-                    self.logger.debug(f"[Debug]: Upstream package tag: {tag}")
-
-                # Check if the current_tag and the new_tag/override_shown_new_tag are not in the upstream package tags
-                # If not, find the closest one to use
-                if current_tag not in upstream_package_tags:
-                    closest_match_current_tag = self.get_closest_package_tag(
-                        current_tag, upstream_package_tags
+                    upstream_package_tags = self.get_package_tags(
+                        source.rstrip("/") + "/-/tags"
                     )
 
-                    if closest_match_current_tag:
-                        self.logger.debug(
-                            f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag}"
-                        )
-                    else:
-                        self.logger.debug(
-                            f"[Debug]: No similar tag for {current_tag} found in the upstream package repository"
+                if upstream_package_tags:
+                    # Log upstream package tags for debug reasons
+                    for tag in upstream_package_tags:
+                        self.logger.debug(f"[Debug]: Upstream package tag: {tag}")
+
+                    # Check if the current_tag and the new_tag/override_shown_new_tag are not in the upstream package tags
+                    # If not, find the closest one to use
+                    if current_tag not in upstream_package_tags:
+                        closest_match_current_tag = self.get_closest_package_tag(
+                            current_tag, upstream_package_tags
                         )
 
-                if new_tag not in upstream_package_tags:
-                    if override_shown_new_tag not in upstream_package_tags:
-                        new_tag_to_check = override_shown_new_tag or new_tag
-                        closest_match_new_tag = self.get_closest_package_tag(
-                            new_tag_to_check, upstream_package_tags
-                        )
-
-                        if closest_match_new_tag:
+                        if closest_match_current_tag:
                             self.logger.debug(
-                                f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag}"
+                                f"[Debug]: Similar tag for {current_tag} found in the upstream package repository: {closest_match_current_tag}"
                             )
                         else:
                             self.logger.debug(
-                                f"[Debug]: No similar tag for {new_tag_to_check} found in the upstream package repository"
+                                f"[Debug]: No similar tag for {current_tag} found in the upstream package repository"
                             )
-            else:
-                self.logger.debug(
-                    f"[Debug]: No upstream package tags found for {source}"
-                )
+                    if new_tag not in upstream_package_tags:
+                        if override_shown_new_tag not in upstream_package_tags:
+                            new_tag_to_check = override_shown_new_tag or new_tag
+                            closest_match_new_tag = self.get_closest_package_tag(
+                                new_tag_to_check, upstream_package_tags
+                            )
+
+                            if closest_match_new_tag:
+                                self.logger.debug(
+                                    f"[Debug]: Similar tag for {new_tag_to_check} found in the upstream package repository: {closest_match_new_tag}"
+                                )
+                            else:
+                                self.logger.debug(
+                                    f"[Debug]: No similar tag for {new_tag_to_check} found in the upstream package repository"
+                                )
+                else:
+                    self.logger.debug(
+                        f"[Debug]: No upstream package tags found for {source}"
+                    )
 
         # GitHub compare tags URL: https://github.com/user/repo/compare/v1.0.0...v2.0.0
         # KDE GitLab compare tags URL: https://invent.kde.org/plasma/plasma-firewall/-/compare/v6.3.5...v6.3.90
@@ -1387,6 +1414,7 @@ class PackageHandler:
         if all(s not in source for s in ["gitlab", "invent.kde", "github"]):
             kwargs = "commit-row-message"
             tag = "a"
+
             response = self.web_scraper.fetch_page_content(compare_tags_url)
             if response is None:
                 self.logger.debug(
@@ -1395,6 +1423,7 @@ class PackageHandler:
                 return None
 
         commits = None
+
         if "git.kernel.org" in source:
             commits = self.web_scraper.find_elements_between_two_elements(
                 response, "tr", new_tag, current_tag
@@ -1418,7 +1447,6 @@ class PackageHandler:
                     project_full_path = (
                         project_full_path or f"{project_path}/{package_name}"
                     )
-
                     commits = self.gitlab_api.get_commits_between_tags(
                         base_url,
                         project_full_path,
@@ -1431,7 +1459,7 @@ class PackageHandler:
                     )
                 else:
                     self.logger.debug(
-                        f"""[Debug]: Error, required parameter 'project_path' 
+                        f"""[Debug]: Error, required parameter 'project_path'
                         is missing for getting the GitLab package changelog
                         """
                     )
@@ -1449,11 +1477,9 @@ class PackageHandler:
                     closest_match_new_tag if closest_match_new_tag else new_tag,
                 )
             else:
-                self.logger.debug(
-                    f"""[Debug]: Error, required parameter 'project_path' 
+                self.logger.debug(f"""[Debug]: Error, required parameter 'project_path'
                         is missing for getting the invent.kde package changelog
-                        """
-                )
+                        """)
         elif "github" in source:
             if project_path:
                 commits = self.github_api.get_commits_between_tags(
@@ -1478,11 +1504,9 @@ class PackageHandler:
                     closest_match_new_tag if closest_match_new_tag else new_tag,
                 )
             else:
-                self.logger.debug(
-                    f"""[Debug]: Error, required parameter 'project_path' 
+                self.logger.debug(f"""[Debug]: Error, required parameter 'project_path'
                         is missing for getting the GitHub package changelog
-                        """
-                )
+                        """)
         else:
             commits = self.web_scraper.find_all_elements(response, tag, class_=kwargs)
 
@@ -1831,3 +1855,21 @@ class PackageHandler:
         repo_url = re.sub(r"(\.git|/archive/.*|[?#].*)$", "", repo_url)
 
         return repo_url
+
+    def extract_commit_hash_from_version(self, version: str) -> Optional[str]:
+        """Extracts a commit hash from a rolling-release style version string.
+
+        Arch uses pkgver formats like:
+        - 2.1.1783773675+3c4f9fe-1        (luajit)  -> 3c4f9fe
+        - 16.1.1+r346+g4e03491b401d-3     (gcc)     -> 4e03491b401d
+
+        :param version: The version string to check.
+        :type version: str
+        :return: The extracted commit hash or None if the version
+                does not contain one.
+        :rtype: Optional[str]
+        """
+        # (?=[0-9]*[a-f]) requires at least one letter a-f, so pure
+        # date-like numbers (e.g. "+20240101") are not misdetected as hashes
+        match = re.search(r"\+g?(?=[0-9]*[a-f])([0-9a-f]{7,40})(?:-\d+)?$", version)
+        return match.group(1) if match else None

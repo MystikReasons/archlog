@@ -1,4 +1,4 @@
-# 1.2 ()
+# 1.2 (2026-07-13)
 
 ### Features and enhancements
 
@@ -17,16 +17,18 @@
 - **General** Rebuild code with black 25.9.0
 - **Pyproject** Update mandatory and optional dependencies to their latest version
 - **Package Handler** Add category `multimedia` as a KDE package category
+- **Package Handler** Support rolling release packages (e.g. luajit) by comparing embedded commit hashes instead of tags
 
 ### Bug fixes
 
-**GitHub API** Fix missing call raise_for_status() which should then call the retry loop
-**Package Handler** Fix parsing of package tag in intermediate tags handling in regard to the hyphens
-**Package Handler** Fix shown compare-url-tags-arch when handling intermediate tags. It now uses the correct new tag
-**Package Handler** Fix minor release handling when it is an intermediate tag. The changelog is now correctly formatted
-**Package Handler** Fix source URL parsing (optional git+ prefix and regex bug) in extract_base_git_url. Add additional test case
-**Package Handler** Correct tag normalization to avoid stripping numeric versions without dots
-**Logger Manager** Fix handle mojibake encoding in console log output, separate file and console handlers
+- **GitHub API** Fix missing call raise_for_status() which should then call the retry loop
+- **Package Handler** Fix parsing of package tag in intermediate tags handling in regard to the hyphens
+- **Package Handler** Fix shown compare-url-tags-arch when handling intermediate tags. It now uses the correct new tag
+- **Package Handler** Fix minor release handling when it is an intermediate tag. The changelog is now correctly formatted
+- **Package Handler** Fix source URL parsing (optional git+ prefix and regex bug) in extract_base_git_url. Add additional test case
+- **Package Handler** Correct tag normalization to avoid stripping numeric versions without dots
+- **Logger Manager** Fix handle mojibake encoding in console log output, separate file and console handlers
+- **Package Handler** Fix TypeError when the upstream URL points to api.github.com; add None guard and normalize the URL
 
 # 1.1 (2025-09-09)
 
