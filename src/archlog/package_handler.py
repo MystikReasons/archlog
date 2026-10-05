@@ -5,7 +5,7 @@ import re
 import subprocess
 import shutil
 from difflib import SequenceMatcher
-from rapidfuzz import process
+from rapidfuzz import fuzz, process
 import tomllib
 
 from archlog.web_scraper import WebScraper
@@ -1145,14 +1145,18 @@ class PackageHandler:
         taking into account common versioning formats and suffixes.
 
         The function performs the following steps:
-            1. Normalizes the current_tag by removing leading digits with dash, leading 'v',
-               replacing underscores with dots, and removing trailing numeric suffixes (e.g., "-1"),
-               sbut keeping "-rcX" intact.
+            1. Normalizes the current_tag by removing an epoch prefix (e.g., "4:"),
+               removing leading digits with dash, leading 'v', replacing underscores
+               with dots, and removing trailing numeric suffixes (e.g., "-1"), but keeping "-rcX" intact.
             2. Normalizes all tags in the same way.
-            3. Uses fuzzy string matching (RapidFuzz) to find the tag most similar to the normalized current_tag.
-            4. Returns the original tag from `tags` that is the closest match, or None if no match exceeds the threshold.
+            3. Returns the original tag immediately if an exact match of the normalized tags exists.
+            4. Otherwise uses fuzzy string matching (RapidFuzz, simple ratio scorer) to find the tag
+               most similar to the normalized current_tag. The simple ratio scorer is used
+               instead of WRatio to avoid partial substring matches (e.g., "1.1.2" matching "1.1.22").
+            5. Returns the original tag from `tags` that is the closest match,
+               or None if no match exceeds the threshold.
 
-        :param current_tag: The current package tag string to compare (e.g., "1-6.3.90-1").
+        :param current_tag: The current package tag string to compare (e.g., "1-6.3.90-1", "4:1.1.22-1").
         :type current_tag: str
         :param tags: A list of package tags strings (e.g., ["v6.3.90", "v6.3.91"]).
         :type tags: List[str]
@@ -1167,8 +1171,9 @@ class PackageHandler:
             Normalize a package tag for comparison.
 
             Steps:
-            1. Remove leading digits with dash (e.g., "1-6.3.90-1" -> "6.3.90")
-            2. Remove a leading 'v' if present
+            1. Remove an epoch prefix (e.g., "4:1.1.22-1" -> "1.1.22-1")
+            2. Remove leading digits with dash (e.g., "1-6.3.90-1" -> "6.3.90-1")
+            3. Remove a leading 'v' if present
             3. Replace underscores '_' with dots '.'
             4. Remove trailing numeric suffix like '-1', but keep '-rcX' intact
 
@@ -1177,6 +1182,7 @@ class PackageHandler:
             :return: The normalized tag suitable for fuzzy matching
             :rtype: str
             """
+            tag = re.sub(r"^\d+:", "", tag)
             tag = re.sub(r"^\d{1,2}-(?=\d+\.)", "", tag)
             tag = tag.lstrip("v")
             tag = tag.replace("_", ".")
@@ -1187,13 +1193,20 @@ class PackageHandler:
         cleaned_tag = normalize_tag(current_tag)
         normalized_tags = {normalize_tag(t): t for t in tags}
 
-        matches = process.extract(
-            cleaned_tag, normalized_tags.keys(), score_cutoff=threshold
+        # An exact match always takes precedence over fuzzy matching
+        if cleaned_tag in normalized_tags:
+            return normalized_tags[cleaned_tag]
+
+        match = process.extractOne(
+            cleaned_tag,
+            normalized_tags.keys(),
+            scorer=fuzz.ratio,
+            score_cutoff=threshold,
         )
-        if not matches:
+        if match is None:
             return None
 
-        best_match, score, _ = matches[0]
+        best_match, score, _ = match
 
         return normalized_tags[best_match]
 
